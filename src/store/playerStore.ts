@@ -1,0 +1,90 @@
+import { create } from 'zustand';
+
+export interface Song {
+  id: string;
+  name: string;
+  artist: string;
+  album: string;
+  image: string;
+  url: string;
+  duration: number;
+}
+
+export interface Playlist {
+  id: string;
+  name: string;
+  image: string;
+  songCount: number;
+  songs?: Song[];
+}
+
+interface PlayerState {
+  currentSong: Song | null;
+  queue: Song[];
+  isPlaying: boolean;
+  volume: number;
+  currentTime: number;
+  duration: number;
+  shuffle: boolean;
+  repeat: 'off' | 'one' | 'all';
+  setCurrentSong: (song: Song) => void;
+  setQueue: (songs: Song[]) => void;
+  playSongFromQueue: (index: number) => void;
+  togglePlay: () => void;
+  setIsPlaying: (v: boolean) => void;
+  setVolume: (v: number) => void;
+  setCurrentTime: (t: number) => void;
+  setDuration: (d: number) => void;
+  toggleShuffle: () => void;
+  toggleRepeat: () => void;
+  playNext: () => void;
+  playPrev: () => void;
+  addToQueue: (song: Song) => void;
+}
+
+export const usePlayerStore = create<PlayerState>((set, get) => ({
+  currentSong: null,
+  queue: [],
+  isPlaying: false,
+  volume: 0.7,
+  currentTime: 0,
+  duration: 0,
+  shuffle: false,
+  repeat: 'off',
+  setCurrentSong: (song) => set({ currentSong: song, isPlaying: true, currentTime: 0 }),
+  setQueue: (songs) => set({ queue: songs }),
+  playSongFromQueue: (index) => {
+    const { queue } = get();
+    if (queue[index]) set({ currentSong: queue[index], isPlaying: true, currentTime: 0 });
+  },
+  togglePlay: () => set((s) => ({ isPlaying: !s.isPlaying })),
+  setIsPlaying: (v) => set({ isPlaying: v }),
+  setVolume: (v) => set({ volume: v }),
+  setCurrentTime: (t) => set({ currentTime: t }),
+  setDuration: (d) => set({ duration: d }),
+  toggleShuffle: () => set((s) => ({ shuffle: !s.shuffle })),
+  toggleRepeat: () => set((s) => ({
+    repeat: s.repeat === 'off' ? 'all' : s.repeat === 'all' ? 'one' : 'off'
+  })),
+  playNext: () => {
+    const { queue, currentSong, shuffle, repeat } = get();
+    if (!currentSong || queue.length === 0) return;
+    const idx = queue.findIndex(s => s.id === currentSong.id);
+    if (shuffle) {
+      const next = Math.floor(Math.random() * queue.length);
+      set({ currentSong: queue[next], currentTime: 0, isPlaying: true });
+    } else if (idx < queue.length - 1) {
+      set({ currentSong: queue[idx + 1], currentTime: 0, isPlaying: true });
+    } else if (repeat === 'all') {
+      set({ currentSong: queue[0], currentTime: 0, isPlaying: true });
+    }
+  },
+  playPrev: () => {
+    const { queue, currentSong, currentTime } = get();
+    if (!currentSong) return;
+    if (currentTime > 3) { set({ currentTime: 0 }); return; }
+    const idx = queue.findIndex(s => s.id === currentSong.id);
+    if (idx > 0) set({ currentSong: queue[idx - 1], currentTime: 0, isPlaying: true });
+  },
+  addToQueue: (song) => set((s) => ({ queue: [...s.queue, song] })),
+}));
