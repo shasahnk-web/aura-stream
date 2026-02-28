@@ -33,7 +33,7 @@ export default function SearchPage() {
   };
 
   return (
-    <div className="flex-1 overflow-y-auto scrollbar-thin pb-28 px-4 md:px-8 pt-6">
+    <div className="flex-1 overflow-y-auto scrollbar-thin pb-36 md:pb-28 px-4 md:px-8 pt-6">
       <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
         <h1 className="text-3xl font-bold font-display text-foreground mb-4">Search</h1>
 

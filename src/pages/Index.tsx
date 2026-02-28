@@ -51,7 +51,7 @@ export default function HomePage() {
   };
 
   return (
-    <div className="flex-1 overflow-y-auto scrollbar-thin pb-28 px-4 md:px-8 pt-6">
+    <div className="flex-1 overflow-y-auto scrollbar-thin pb-36 md:pb-28 px-4 md:px-8 pt-6">
       {/* Hero */}
       <motion.div
         initial={{ opacity: 0, y: 20 }}
