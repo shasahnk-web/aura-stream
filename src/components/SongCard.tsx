@@ -1,5 +1,5 @@
-import { usePlayerStore, Song } from '@/store/playerStore';
-import { Play, Pause } from 'lucide-react';
+import { usePlayerStore, Song, useLikedStore } from '@/store/playerStore';
+import { Play, Pause, Heart } from 'lucide-react';
 import { motion } from 'framer-motion';
 
 interface SongCardProps {
@@ -10,7 +10,9 @@ interface SongCardProps {
 
 export default function SongCard({ song, songs, index = 0 }: SongCardProps) {
   const { setCurrentSong, setQueue, currentSong, isPlaying, togglePlay } = usePlayerStore();
+  const { isLiked, toggleLike } = useLikedStore();
   const isCurrentSong = currentSong?.id === song.id;
+  const liked = isLiked(song.id);
 
   const handlePlay = () => {
     if (isCurrentSong) {
@@ -56,7 +58,13 @@ export default function SongCard({ song, songs, index = 0 }: SongCardProps) {
         </p>
         <p className="text-xs text-muted-foreground truncate">{song.artist}</p>
       </div>
-      <span className="text-xs text-muted-foreground hidden sm:block">
+      <button
+        onClick={(e) => { e.stopPropagation(); toggleLike(song); }}
+        className={`shrink-0 transition-colors ${liked ? 'text-accent' : 'text-muted-foreground/40 hover:text-muted-foreground'}`}
+      >
+        <Heart className="w-4 h-4" fill={liked ? 'currentColor' : 'none'} />
+      </button>
+      <span className="text-xs text-muted-foreground hidden sm:block w-10 text-right">
         {song.duration > 0 ? `${Math.floor(song.duration / 60)}:${(song.duration % 60).toString().padStart(2, '0')}` : ''}
       </span>
     </motion.div>

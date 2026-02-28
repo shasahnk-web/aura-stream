@@ -18,6 +18,36 @@ export interface Playlist {
   songs?: Song[];
 }
 
+// Liked songs store with localStorage persistence
+interface LikedSongsState {
+  likedSongs: Song[];
+  isLiked: (id: string) => boolean;
+  toggleLike: (song: Song) => void;
+}
+
+function loadLiked(): Song[] {
+  try {
+    const data = localStorage.getItem('kanako-liked-songs');
+    return data ? JSON.parse(data) : [];
+  } catch { return []; }
+}
+
+function saveLiked(songs: Song[]) {
+  localStorage.setItem('kanako-liked-songs', JSON.stringify(songs));
+}
+
+export const useLikedStore = create<LikedSongsState>((set, get) => ({
+  likedSongs: loadLiked(),
+  isLiked: (id) => get().likedSongs.some(s => s.id === id),
+  toggleLike: (song) => {
+    const { likedSongs } = get();
+    const exists = likedSongs.some(s => s.id === song.id);
+    const updated = exists ? likedSongs.filter(s => s.id !== song.id) : [song, ...likedSongs];
+    saveLiked(updated);
+    set({ likedSongs: updated });
+  },
+}));
+
 interface PlayerState {
   currentSong: Song | null;
   queue: Song[];
@@ -27,6 +57,7 @@ interface PlayerState {
   duration: number;
   shuffle: boolean;
   repeat: 'off' | 'one' | 'all';
+  dominantColor: string | null;
   setCurrentSong: (song: Song) => void;
   setQueue: (songs: Song[]) => void;
   playSongFromQueue: (index: number) => void;
@@ -40,6 +71,7 @@ interface PlayerState {
   playNext: () => void;
   playPrev: () => void;
   addToQueue: (song: Song) => void;
+  setDominantColor: (c: string | null) => void;
 }
 
 export const usePlayerStore = create<PlayerState>((set, get) => ({
@@ -51,6 +83,7 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
   duration: 0,
   shuffle: false,
   repeat: 'off',
+  dominantColor: null,
   setCurrentSong: (song) => set({ currentSong: song, isPlaying: true, currentTime: 0 }),
   setQueue: (songs) => set({ queue: songs }),
   playSongFromQueue: (index) => {
@@ -87,4 +120,5 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
     if (idx > 0) set({ currentSong: queue[idx - 1], currentTime: 0, isPlaying: true });
   },
   addToQueue: (song) => set((s) => ({ queue: [...s.queue, song] })),
+  setDominantColor: (c) => set({ dominantColor: c }),
 }));
