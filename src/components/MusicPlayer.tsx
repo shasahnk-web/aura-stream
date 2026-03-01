@@ -1,10 +1,13 @@
-import { useRef, useEffect, useCallback } from 'react';
+import { useRef, useEffect, useCallback, useState } from 'react';
 import { usePlayerStore, useLikedStore } from '@/store/playerStore';
 import {
   Play, Pause, SkipBack, SkipForward, Shuffle, Repeat, Repeat1,
-  Volume2, Volume1, VolumeX, Heart, ListMusic
+  Volume2, Volume1, VolumeX, Heart, ListMusic, Music2
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import QueueDrawer from './QueueDrawer';
+import LyricsPanel from './LyricsPanel';
+import SleepTimer from './SleepTimer';
 
 function formatTime(s: number) {
   const m = Math.floor(s / 60);
@@ -62,6 +65,9 @@ export default function MusicPlayer() {
     if (audioRef.current) audioRef.current.currentTime = t;
     setCurrentTime(t);
   };
+
+  const [queueOpen, setQueueOpen] = useState(false);
+  const [lyricsOpen, setLyricsOpen] = useState(false);
 
   if (!currentSong) return null;
 
@@ -168,10 +174,14 @@ export default function MusicPlayer() {
               </div>
             </div>
 
-            <div className="flex items-center gap-2 w-[180px] justify-end">
-              <button className="text-muted-foreground hover:text-foreground transition-colors">
+            <div className="flex items-center gap-2 w-[220px] justify-end">
+              <button onClick={() => setLyricsOpen(true)} className="text-muted-foreground hover:text-foreground transition-colors">
+                <Music2 className="w-4 h-4" />
+              </button>
+              <button onClick={() => setQueueOpen(true)} className="text-muted-foreground hover:text-foreground transition-colors">
                 <ListMusic className="w-4 h-4" />
               </button>
+              <SleepTimer />
               <button onClick={() => setVolume(volume === 0 ? 0.7 : 0)} className="text-muted-foreground hover:text-foreground transition-colors">
                 <VolumeIcon className="w-4 h-4" />
               </button>
@@ -185,6 +195,8 @@ export default function MusicPlayer() {
           </div>
         </motion.div>
       </AnimatePresence>
+      <QueueDrawer open={queueOpen} onOpenChange={setQueueOpen} />
+      <LyricsPanel open={lyricsOpen} onOpenChange={setLyricsOpen} />
     </>
   );
 }
