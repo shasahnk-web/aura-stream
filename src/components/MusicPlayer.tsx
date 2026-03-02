@@ -8,6 +8,8 @@ import { motion, AnimatePresence } from 'framer-motion';
 import QueueDrawer from './QueueDrawer';
 import LyricsPanel from './LyricsPanel';
 import SleepTimer from './SleepTimer';
+import PlaybackControls from './PlaybackControls';
+import AudioVisualizer from './AudioVisualizer';
 
 function formatTime(s: number) {
   const m = Math.floor(s / 60);
@@ -17,6 +19,8 @@ function formatTime(s: number) {
 
 export default function MusicPlayer() {
   const audioRef = useRef<HTMLAudioElement>(null);
+  const crossfadeAudioRef = useRef<HTMLAudioElement>(null);
+  const crossfadeTimerRef = useRef<ReturnType<typeof setTimeout>>();
   const {
     currentSong, isPlaying, volume, currentTime, duration,
     shuffle, repeat, togglePlay, setCurrentTime, setDuration,
@@ -24,14 +28,22 @@ export default function MusicPlayer() {
   } = usePlayerStore();
   const { isLiked, toggleLike } = useLikedStore();
 
+  const [playbackRate, setPlaybackRate] = useState(1);
+  const [crossfadeDuration, setCrossfadeDuration] = useState(0);
+  const [queueOpen, setQueueOpen] = useState(false);
+  const [lyricsOpen, setLyricsOpen] = useState(false);
+
+  // Load song
   useEffect(() => {
     const audio = audioRef.current;
     if (!audio || !currentSong) return;
     audio.src = currentSong.url;
     audio.volume = volume;
+    audio.playbackRate = playbackRate;
     if (isPlaying) audio.play().catch(() => {});
   }, [currentSong]);
 
+  // Play/pause
   useEffect(() => {
     const audio = audioRef.current;
     if (!audio) return;
@@ -39,9 +51,44 @@ export default function MusicPlayer() {
     else audio.pause();
   }, [isPlaying]);
 
+  // Volume
   useEffect(() => {
     if (audioRef.current) audioRef.current.volume = volume;
   }, [volume]);
+
+  // Playback rate
+  useEffect(() => {
+    if (audioRef.current) audioRef.current.playbackRate = playbackRate;
+  }, [playbackRate]);
+
+  // Crossfade logic
+  useEffect(() => {
+    if (crossfadeDuration <= 0) return;
+    const audio = audioRef.current;
+    if (!audio || !duration || duration <= crossfadeDuration) return;
+
+    const checkCrossfade = () => {
+      const timeLeft = duration - audio.currentTime;
+      if (timeLeft <= crossfadeDuration && timeLeft > 0) {
+        // Start fading out current
+        const fadeStep = 50; // ms
+        const steps = (crossfadeDuration * 1000) / fadeStep;
+        const volumeStep = volume / steps;
+        let currentVol = volume;
+
+        const fadeInterval = setInterval(() => {
+          currentVol = Math.max(0, currentVol - volumeStep);
+          if (audio) audio.volume = currentVol;
+          if (currentVol <= 0) clearInterval(fadeInterval);
+        }, fadeStep);
+
+        clearTimeout(crossfadeTimerRef.current);
+      }
+    };
+
+    audio.addEventListener('timeupdate', checkCrossfade);
+    return () => audio.removeEventListener('timeupdate', checkCrossfade);
+  }, [crossfadeDuration, duration, volume]);
 
   const onTimeUpdate = useCallback(() => {
     if (audioRef.current) setCurrentTime(audioRef.current.currentTime);
@@ -52,22 +99,20 @@ export default function MusicPlayer() {
   }, [setDuration]);
 
   const onEnded = useCallback(() => {
+    if (audioRef.current) audioRef.current.volume = volume; // Reset after fade
     if (repeat === 'one' && audioRef.current) {
       audioRef.current.currentTime = 0;
       audioRef.current.play();
     } else {
       playNext();
     }
-  }, [repeat, playNext]);
+  }, [repeat, playNext, volume]);
 
   const handleSeek = (e: React.ChangeEvent<HTMLInputElement>) => {
     const t = parseFloat(e.target.value);
     if (audioRef.current) audioRef.current.currentTime = t;
     setCurrentTime(t);
   };
-
-  const [queueOpen, setQueueOpen] = useState(false);
-  const [lyricsOpen, setLyricsOpen] = useState(false);
 
   if (!currentSong) return null;
 
@@ -82,7 +127,9 @@ export default function MusicPlayer() {
         onTimeUpdate={onTimeUpdate}
         onLoadedMetadata={onLoadedMetadata}
         onEnded={onEnded}
+        crossOrigin="anonymous"
       />
+      <audio ref={crossfadeAudioRef} crossOrigin="anonymous" />
       <AnimatePresence>
         <motion.div
           initial={{ y: 100, opacity: 0 }}
@@ -174,13 +221,20 @@ export default function MusicPlayer() {
               </div>
             </div>
 
-            <div className="flex items-center gap-2 w-[220px] justify-end">
+            <div className="flex items-center gap-2 w-[280px] justify-end">
+              <AudioVisualizer audioElement={audioRef.current} barCount={16} className="h-8 w-24 mr-1" />
               <button onClick={() => setLyricsOpen(true)} className="text-muted-foreground hover:text-foreground transition-colors">
                 <Music2 className="w-4 h-4" />
               </button>
               <button onClick={() => setQueueOpen(true)} className="text-muted-foreground hover:text-foreground transition-colors">
                 <ListMusic className="w-4 h-4" />
               </button>
+              <PlaybackControls
+                playbackRate={playbackRate}
+                onPlaybackRateChange={setPlaybackRate}
+                crossfadeDuration={crossfadeDuration}
+                onCrossfadeDurationChange={setCrossfadeDuration}
+              />
               <SleepTimer />
               <button onClick={() => setVolume(volume === 0 ? 0.7 : 0)} className="text-muted-foreground hover:text-foreground transition-colors">
                 <VolumeIcon className="w-4 h-4" />
@@ -188,7 +242,7 @@ export default function MusicPlayer() {
               <input
                 type="range" min={0} max={1} step={0.01} value={volume}
                 onChange={(e) => setVolume(parseFloat(e.target.value))}
-                className="w-24 h-1 bg-secondary rounded-full appearance-none cursor-pointer player-seek"
+                className="w-20 h-1 bg-secondary rounded-full appearance-none cursor-pointer player-seek"
                 style={{ background: `linear-gradient(to right, hsl(270 70% 55%) ${volume * 100}%, hsl(240 12% 16%) ${volume * 100}%)` }}
               />
             </div>
