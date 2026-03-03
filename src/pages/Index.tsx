@@ -3,6 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import { fetchPlaylist, FEATURED_PLAYLISTS } from '@/services/musicApi';
 import PlaylistCard from '@/components/PlaylistCard';
 import SongCard from '@/components/SongCard';
+import SpotifyRecommendations from '@/components/SpotifyRecommendations';
 import { usePlayerStore, Song } from '@/store/playerStore';
 import { motion } from 'framer-motion';
 import { Play, TrendingUp, Clock, Sparkles } from 'lucide-react';
@@ -78,6 +79,9 @@ export default function HomePage() {
           </div>
         </section>
       )}
+
+      {/* Spotify Recommendations */}
+      <SpotifyRecommendations />
 
       {/* Trending Songs */}
       {trendingSongs.length > 0 && (
