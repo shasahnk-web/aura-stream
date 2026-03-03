@@ -72,3 +72,16 @@ export async function spotifyNewReleases(limit = 20) {
 export async function spotifyFeaturedPlaylists(limit = 20) {
   return spotifyCall({ action: 'featured-playlists', limit: String(limit) });
 }
+
+/** Convert a Spotify track to our Song interface */
+export function spotifyTrackToSong(track: SpotifyTrack): import('@/store/playerStore').Song {
+  return {
+    id: `spotify-${track.id}`,
+    name: track.name,
+    artist: track.artists.map(a => a.name).join(', '),
+    album: track.album.name,
+    image: track.album.images?.[0]?.url || '',
+    url: track.preview_url || '',
+    duration: Math.round(track.duration_ms / 1000),
+  };
+}
