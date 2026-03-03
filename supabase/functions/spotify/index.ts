@@ -49,6 +49,23 @@ async function spotifyFetch(path: string, token: string) {
   return res.json();
 }
 
+async function jiosaavnFetch(path: string) {
+  const apis = [
+    `https://saavn.dev/api${path}`,
+    `https://jiosaavn-api-privatecvc2.vercel.app${path}`,
+  ];
+  
+  for (const url of apis) {
+    try {
+      const res = await fetch(url);
+      if (res.ok) {
+        return res.json();
+      }
+    } catch {}
+  }
+  throw new Error('All JioSaavn API endpoints failed');
+}
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
@@ -57,12 +74,27 @@ Deno.serve(async (req) => {
   try {
     const url = new URL(req.url);
     const action = url.searchParams.get('action');
-    const token = await getAccessToken();
 
     let result: any;
 
     switch (action) {
+      // ---- JioSaavn proxy endpoints ----
+      case 'jiosaavn-search': {
+        const q = url.searchParams.get('q') || '';
+        const limit = url.searchParams.get('limit') || '20';
+        result = await jiosaavnFetch(`/search/songs?query=${encodeURIComponent(q)}&limit=${limit}`);
+        break;
+      }
+
+      case 'jiosaavn-playlist': {
+        const id = url.searchParams.get('id') || '';
+        result = await jiosaavnFetch(`/playlists?id=${id}`);
+        break;
+      }
+
+      // ---- Spotify endpoints ----
       case 'search': {
+        const token = await getAccessToken();
         const q = url.searchParams.get('q') || '';
         const type = url.searchParams.get('type') || 'track';
         const limit = url.searchParams.get('limit') || '20';
@@ -74,6 +106,7 @@ Deno.serve(async (req) => {
       }
 
       case 'recommendations': {
+        const token = await getAccessToken();
         const seedTracks = url.searchParams.get('seed_tracks') || '';
         const seedArtists = url.searchParams.get('seed_artists') || '';
         const seedGenres = url.searchParams.get('seed_genres') || '';
@@ -87,12 +120,14 @@ Deno.serve(async (req) => {
       }
 
       case 'artist': {
+        const token = await getAccessToken();
         const id = url.searchParams.get('id') || '';
         result = await spotifyFetch(`/artists/${id}`, token);
         break;
       }
 
       case 'artist-top-tracks': {
+        const token = await getAccessToken();
         const id = url.searchParams.get('id') || '';
         const market = url.searchParams.get('market') || 'US';
         result = await spotifyFetch(`/artists/${id}/top-tracks?market=${market}`, token);
@@ -100,12 +135,14 @@ Deno.serve(async (req) => {
       }
 
       case 'new-releases': {
+        const token = await getAccessToken();
         const limit = url.searchParams.get('limit') || '20';
         result = await spotifyFetch(`/browse/new-releases?limit=${limit}`, token);
         break;
       }
 
       case 'featured-playlists': {
+        const token = await getAccessToken();
         const limit = url.searchParams.get('limit') || '20';
         result = await spotifyFetch(`/browse/featured-playlists?limit=${limit}`, token);
         break;
@@ -113,7 +150,7 @@ Deno.serve(async (req) => {
 
       default:
         return new Response(
-          JSON.stringify({ error: 'Invalid action. Use: search, recommendations, artist, artist-top-tracks, new-releases, featured-playlists' }),
+          JSON.stringify({ error: 'Invalid action' }),
           { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
     }
