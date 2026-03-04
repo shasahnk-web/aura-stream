@@ -1,11 +1,9 @@
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { searchSongs } from '@/services/musicApi';
-import { spotifySearch, spotifyTrackToSong, SpotifyTrack } from '@/services/spotifyApi';
 import SongCard from '@/components/SongCard';
-import { Search as SearchIcon, Music2 } from 'lucide-react';
+import { Search as SearchIcon } from 'lucide-react';
 import { motion } from 'framer-motion';
-import { Song } from '@/store/playerStore';
 
 const GENRES = [
   { name: 'Pop', gradient: 'from-pink-500 to-rose-400' },
@@ -22,27 +20,11 @@ export default function SearchPage() {
   const [query, setQuery] = useState('');
   const [debouncedQuery, setDebouncedQuery] = useState('');
 
-  const { data: jiosaavnResults, isLoading: jiosaavnLoading } = useQuery({
-    queryKey: ['search-jiosaavn', debouncedQuery],
+  const { data: results, isLoading } = useQuery({
+    queryKey: ['search', debouncedQuery],
     queryFn: () => searchSongs(debouncedQuery),
     enabled: debouncedQuery.length > 1,
   });
-
-  const { data: spotifyResults, isLoading: spotifyLoading } = useQuery({
-    queryKey: ['search-spotify', debouncedQuery],
-    queryFn: async (): Promise<Song[]> => {
-      try {
-        const data = await spotifySearch(debouncedQuery, 'track', 10);
-        const tracks: SpotifyTrack[] = data.tracks?.items || [];
-        return tracks.filter(t => t.preview_url).map(spotifyTrackToSong);
-      } catch {
-        return [];
-      }
-    },
-    enabled: debouncedQuery.length > 1,
-  });
-
-  const isLoading = jiosaavnLoading || spotifyLoading;
 
   const handleInput = (val: string) => {
     setQuery(val);
@@ -67,28 +49,12 @@ export default function SearchPage() {
         </div>
       </motion.div>
 
-      {/* Spotify Results */}
-      {spotifyResults && spotifyResults.length > 0 && (
-        <section className="mb-6">
-          <div className="flex items-center gap-2 mb-3">
-            <Music2 className="w-4 h-4 text-primary" />
-            <h2 className="text-lg font-semibold text-foreground">From Spotify</h2>
-          </div>
-          <div className="glass rounded-xl p-2">
-            {spotifyResults.map((song, i) => (
-              <SongCard key={song.id} song={song} songs={spotifyResults} index={i} />
-            ))}
-          </div>
-        </section>
-      )}
-
-      {/* JioSaavn Results */}
-      {jiosaavnResults && jiosaavnResults.length > 0 && (
+      {results && results.length > 0 && (
         <section className="mb-8">
-          <h2 className="text-lg font-semibold text-foreground mb-3">From JioSaavn</h2>
+          <h2 className="text-lg font-semibold text-foreground mb-3">Results</h2>
           <div className="glass rounded-xl p-2">
-            {jiosaavnResults.map((song, i) => (
-              <SongCard key={song.id} song={song} songs={jiosaavnResults} index={i} />
+            {results.map((song, i) => (
+              <SongCard key={song.id} song={song} songs={results} index={i} />
             ))}
           </div>
         </section>
