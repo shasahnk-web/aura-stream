@@ -7,7 +7,7 @@ import SpotifyRecommendations from '@/components/SpotifyRecommendations';
 import NewReleases from '@/components/NewReleases';
 import { usePlayerStore, Song } from '@/store/playerStore';
 import { motion } from 'framer-motion';
-import { Play, TrendingUp, Clock, Sparkles } from 'lucide-react';
+import { Play, TrendingUp, Sparkles } from 'lucide-react';
 
 function QuickPlayCard({ name, image, songs, index }: { name: string; image: string; songs: Song[]; index: number }) {
   const { setCurrentSong, setQueue } = usePlayerStore();
@@ -34,7 +34,7 @@ export default function HomePage() {
     queryFn: () => fetchPlaylist(FEATURED_PLAYLISTS[0].id),
   });
 
-  const playlistQueries = FEATURED_PLAYLISTS.slice(0, 6).map(p => ({
+  const playlistQueries = FEATURED_PLAYLISTS.map(p => ({
     ...p,
     query: useQuery({
       queryKey: ['playlist-meta', p.id],

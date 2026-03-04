@@ -113,12 +113,10 @@ export async function fetchHomepage(): Promise<any> {
   }
 }
 
-// Featured playlist IDs from JioSaavn
+// Featured playlist IDs from JioSaavn (verified working)
 export const FEATURED_PLAYLISTS = [
-  { id: '1134543272', name: 'Trending Now' },
+  { id: '1134543272', name: 'India Superhits Top 50' },
   { id: '110858205', name: 'Trending Today' },
-  { id: '159144718', name: 'Feel Good Pop' },
-  { id: '929489', name: 'Top 50' },
-  { id: '1134543292', name: 'Chill Vibes' },
-  { id: '2279554', name: 'Bollywood Hits' },
+  { id: '159470188', name: '90s Duets' },
+  { id: '82914609', name: 'Best of Indie' },
 ];

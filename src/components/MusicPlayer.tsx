@@ -2,7 +2,7 @@ import { useRef, useEffect, useCallback, useState } from 'react';
 import { usePlayerStore, useLikedStore } from '@/store/playerStore';
 import {
   Play, Pause, SkipBack, SkipForward, Shuffle, Repeat, Repeat1,
-  Volume2, Volume1, VolumeX, Heart, ListMusic, Music2
+  Volume2, Volume1, VolumeX, Heart, ListMusic, Music2, Download, Maximize2
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import QueueDrawer from './QueueDrawer';
@@ -10,6 +10,7 @@ import LyricsPanel from './LyricsPanel';
 import SleepTimer from './SleepTimer';
 import PlaybackControls from './PlaybackControls';
 import AudioVisualizer from './AudioVisualizer';
+import NowPlayingView from './NowPlayingView';
 
 function formatTime(s: number) {
   const m = Math.floor(s / 60);
@@ -32,6 +33,7 @@ export default function MusicPlayer() {
   const [crossfadeDuration, setCrossfadeDuration] = useState(0);
   const [queueOpen, setQueueOpen] = useState(false);
   const [lyricsOpen, setLyricsOpen] = useState(false);
+  const [nowPlayingOpen, setNowPlayingOpen] = useState(false);
 
   // Load song
   useEffect(() => {
@@ -70,8 +72,7 @@ export default function MusicPlayer() {
     const checkCrossfade = () => {
       const timeLeft = duration - audio.currentTime;
       if (timeLeft <= crossfadeDuration && timeLeft > 0) {
-        // Start fading out current
-        const fadeStep = 50; // ms
+        const fadeStep = 50;
         const steps = (crossfadeDuration * 1000) / fadeStep;
         const volumeStep = volume / steps;
         let currentVol = volume;
@@ -99,7 +100,7 @@ export default function MusicPlayer() {
   }, [setDuration]);
 
   const onEnded = useCallback(() => {
-    if (audioRef.current) audioRef.current.volume = volume; // Reset after fade
+    if (audioRef.current) audioRef.current.volume = volume;
     if (repeat === 'one' && audioRef.current) {
       audioRef.current.currentTime = 0;
       audioRef.current.play();
@@ -112,6 +113,29 @@ export default function MusicPlayer() {
     const t = parseFloat(e.target.value);
     if (audioRef.current) audioRef.current.currentTime = t;
     setCurrentTime(t);
+  };
+
+  const handleNowPlayingSeek = (time: number) => {
+    if (audioRef.current) audioRef.current.currentTime = time;
+    setCurrentTime(time);
+  };
+
+  const handleDownload = async () => {
+    if (!currentSong?.url) return;
+    try {
+      const response = await fetch(currentSong.url);
+      const blob = await response.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${currentSong.name} - ${currentSong.artist}.mp3`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    } catch {
+      window.open(currentSong.url, '_blank');
+    }
   };
 
   if (!currentSong) return null;
@@ -145,7 +169,10 @@ export default function MusicPlayer() {
           </div>
 
           {/* Mobile layout */}
-          <div className="flex md:hidden items-center h-16 px-3 gap-3">
+          <div
+            className="flex md:hidden items-center h-16 px-3 gap-3 cursor-pointer"
+            onClick={() => setNowPlayingOpen(true)}
+          >
             <motion.img
               key={currentSong.id}
               initial={{ scale: 0.8, opacity: 0 }}
@@ -159,19 +186,25 @@ export default function MusicPlayer() {
               <p className="text-[10px] text-muted-foreground truncate">{currentSong.artist}</p>
             </div>
             <button
-              onClick={() => toggleLike(currentSong)}
+              onClick={(e) => { e.stopPropagation(); toggleLike(currentSong); }}
               className={`transition-colors ${liked ? 'text-accent' : 'text-muted-foreground'}`}
             >
               <Heart className="w-4 h-4" fill={liked ? 'currentColor' : 'none'} />
             </button>
-            <button onClick={togglePlay} className="w-9 h-9 rounded-full bg-foreground flex items-center justify-center">
+            <button
+              onClick={(e) => { e.stopPropagation(); togglePlay(); }}
+              className="w-9 h-9 rounded-full bg-foreground flex items-center justify-center"
+            >
               {isPlaying ? <Pause className="w-4 h-4 text-background" /> : <Play className="w-4 h-4 text-background ml-0.5" />}
             </button>
           </div>
 
           {/* Desktop layout */}
           <div className="hidden md:flex items-center h-20 px-4 gap-4">
-            <div className="flex items-center gap-3 min-w-0 w-[280px]">
+            <div
+              className="flex items-center gap-3 min-w-0 w-[280px] cursor-pointer"
+              onClick={() => setNowPlayingOpen(true)}
+            >
               <motion.img
                 key={currentSong.id}
                 initial={{ scale: 0.8, opacity: 0 }}
@@ -185,7 +218,7 @@ export default function MusicPlayer() {
                 <p className="text-xs text-muted-foreground truncate">{currentSong.artist}</p>
               </div>
               <button
-                onClick={() => toggleLike(currentSong)}
+                onClick={(e) => { e.stopPropagation(); toggleLike(currentSong); }}
                 className={`ml-2 transition-colors shrink-0 ${liked ? 'text-accent' : 'text-muted-foreground hover:text-accent'}`}
               >
                 <Heart className="w-4 h-4" fill={liked ? 'currentColor' : 'none'} />
@@ -215,7 +248,7 @@ export default function MusicPlayer() {
                 <input
                   type="range" min={0} max={duration || 0} value={currentTime} onChange={handleSeek}
                   className="flex-1 h-1 bg-secondary rounded-full appearance-none cursor-pointer player-seek"
-                  style={{ background: `linear-gradient(to right, hsl(270 70% 55%) ${progress}%, hsl(240 12% 16%) ${progress}%)` }}
+                  style={{ background: `linear-gradient(to right, hsl(var(--primary)) ${progress}%, hsl(var(--muted)) ${progress}%)` }}
                 />
                 <span className="text-[10px] text-muted-foreground w-10">{formatTime(duration)}</span>
               </div>
@@ -223,6 +256,12 @@ export default function MusicPlayer() {
 
             <div className="flex items-center gap-2 w-[280px] justify-end">
               <AudioVisualizer audioElement={audioRef.current} barCount={16} className="h-8 w-24 mr-1" />
+              <button onClick={handleDownload} className="text-muted-foreground hover:text-foreground transition-colors" title="Download">
+                <Download className="w-4 h-4" />
+              </button>
+              <button onClick={() => setNowPlayingOpen(true)} className="text-muted-foreground hover:text-foreground transition-colors" title="Now Playing">
+                <Maximize2 className="w-4 h-4" />
+              </button>
               <button onClick={() => setLyricsOpen(true)} className="text-muted-foreground hover:text-foreground transition-colors">
                 <Music2 className="w-4 h-4" />
               </button>
@@ -243,7 +282,7 @@ export default function MusicPlayer() {
                 type="range" min={0} max={1} step={0.01} value={volume}
                 onChange={(e) => setVolume(parseFloat(e.target.value))}
                 className="w-20 h-1 bg-secondary rounded-full appearance-none cursor-pointer player-seek"
-                style={{ background: `linear-gradient(to right, hsl(270 70% 55%) ${volume * 100}%, hsl(240 12% 16%) ${volume * 100}%)` }}
+                style={{ background: `linear-gradient(to right, hsl(var(--primary)) ${volume * 100}%, hsl(var(--muted)) ${volume * 100}%)` }}
               />
             </div>
           </div>
@@ -251,6 +290,12 @@ export default function MusicPlayer() {
       </AnimatePresence>
       <QueueDrawer open={queueOpen} onOpenChange={setQueueOpen} />
       <LyricsPanel open={lyricsOpen} onOpenChange={setLyricsOpen} />
+      <NowPlayingView
+        open={nowPlayingOpen}
+        onOpenChange={setNowPlayingOpen}
+        audioElement={audioRef.current}
+        onSeek={handleNowPlayingSeek}
+      />
     </>
   );
 }
