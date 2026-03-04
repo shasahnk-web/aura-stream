@@ -12,6 +12,9 @@ import SearchPage from "./pages/SearchPage";
 import PlaylistPage from "./pages/PlaylistPage";
 import LikedSongsPage from "./pages/LikedSongsPage";
 import ArtistPage from "./pages/ArtistPage";
+import TrendingPage from "./pages/TrendingPage";
+import RadioPage from "./pages/RadioPage";
+import LibraryPage from "./pages/LibraryPage";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -32,9 +35,9 @@ const App = () => (
               <Route path="/playlist/:id" element={<PlaylistPage />} />
               <Route path="/liked" element={<LikedSongsPage />} />
               <Route path="/artist/:id" element={<ArtistPage />} />
-              <Route path="/library" element={<Index />} />
-              <Route path="/trending" element={<Index />} />
-              <Route path="/radio" element={<Index />} />
+              <Route path="/library" element={<LibraryPage />} />
+              <Route path="/trending" element={<TrendingPage />} />
+              <Route path="/radio" element={<RadioPage />} />
               <Route path="*" element={<NotFound />} />
             </Routes>
           </main>

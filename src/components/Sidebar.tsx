@@ -1,7 +1,7 @@
 import { Home, Search, Library, Heart, ListMusic, Radio, TrendingUp, Music } from 'lucide-react';
 import { NavLink } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import trmsLogo from '@/assets/trms-logo.png';
+import kanakoLogo from '@/assets/kanako-logo.png';
 
 const navItems = [
   { icon: Home, label: 'Home', path: '/' },
@@ -11,7 +11,6 @@ const navItems = [
 
 const libraryItems = [
   { icon: Heart, label: 'Liked Songs', path: '/liked' },
-  { icon: ListMusic, label: 'Playlists', path: '/library' },
   { icon: TrendingUp, label: 'Trending', path: '/trending' },
   { icon: Radio, label: 'Radio', path: '/radio' },
 ];
@@ -25,10 +24,10 @@ export default function Sidebar() {
       className="hidden md:flex flex-col w-[240px] h-full glass border-r border-border/50 overflow-hidden"
     >
       <div className="p-6 pb-2 flex items-center gap-3">
-        <img src={trmsLogo} alt="TRMS" className="w-10 h-10 rounded-lg" />
+        <img src={kanakoLogo} alt="KanaKo" className="w-10 h-10 rounded-lg" />
         <div>
-          <h1 className="text-xl font-bold font-display gradient-text tracking-tight">TRMS</h1>
-          <p className="text-[10px] text-muted-foreground">Free Music For Everyone</p>
+          <h1 className="text-xl font-bold font-display gradient-text tracking-tight">KanaKo</h1>
+          <p className="text-[10px] text-muted-foreground">by TRMS</p>
         </div>
       </div>
 
