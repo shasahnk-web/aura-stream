@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { usePlayerStore, Song } from '@/store/playerStore';
-import { spotifySearch, spotifyRecommendations, spotifyTrackToSong, SpotifyTrack } from '@/services/spotifyApi';
+import { searchSongs } from '@/services/musicApi';
 import SongCard from './SongCard';
 import { Sparkles } from 'lucide-react';
 import { motion } from 'framer-motion';
@@ -8,36 +8,20 @@ import { motion } from 'framer-motion';
 export default function SpotifyRecommendations() {
   const currentSong = usePlayerStore(s => s.currentSong);
 
-  // First find the Spotify track ID by searching the current song
-  const { data: seedTrackId } = useQuery({
-    queryKey: ['spotify-seed', currentSong?.name, currentSong?.artist],
-    queryFn: async () => {
-      if (!currentSong) return null;
-      const q = `${currentSong.name} ${currentSong.artist}`;
-      const data = await spotifySearch(q, 'track', 1);
-      return data.tracks?.items?.[0]?.id || null;
-    },
-    enabled: !!currentSong && !currentSong.id.startsWith('spotify-'),
-    staleTime: 5 * 60 * 1000,
-  });
-
-  const resolvedSeedId = currentSong?.id.startsWith('spotify-')
-    ? currentSong.id.replace('spotify-', '')
-    : seedTrackId;
-
   const { data: recommendations } = useQuery({
-    queryKey: ['spotify-recs', resolvedSeedId],
+    queryKey: ['recommendations', currentSong?.name, currentSong?.artist],
     queryFn: async (): Promise<Song[]> => {
-      if (!resolvedSeedId) return [];
+      if (!currentSong) return [];
       try {
-        const data = await spotifyRecommendations({ seedTracks: resolvedSeedId, limit: 8 });
-        const tracks: SpotifyTrack[] = data.tracks || [];
-        return tracks.filter(t => t.preview_url).map(spotifyTrackToSong);
+        // Use JioSaavn search as recommendation engine based on current artist
+        const results = await searchSongs(currentSong.artist);
+        // Filter out the current song and limit
+        return results.filter(s => s.id !== currentSong.id).slice(0, 8);
       } catch {
         return [];
       }
     },
-    enabled: !!resolvedSeedId,
+    enabled: !!currentSong,
     staleTime: 5 * 60 * 1000,
   });
 
