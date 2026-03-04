@@ -1,5 +1,5 @@
 import { usePlayerStore, Song, useLikedStore } from '@/store/playerStore';
-import { Play, Pause, Heart } from 'lucide-react';
+import { Play, Pause, Heart, Download } from 'lucide-react';
 import { motion } from 'framer-motion';
 
 interface SongCardProps {
@@ -20,6 +20,25 @@ export default function SongCard({ song, songs, index = 0 }: SongCardProps) {
     } else {
       if (songs) setQueue(songs);
       setCurrentSong(song);
+    }
+  };
+
+  const handleDownload = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!song.url) return;
+    try {
+      const response = await fetch(song.url);
+      const blob = await response.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${song.name} - ${song.artist}.mp3`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    } catch {
+      window.open(song.url, '_blank');
     }
   };
 
@@ -58,6 +77,13 @@ export default function SongCard({ song, songs, index = 0 }: SongCardProps) {
         </p>
         <p className="text-xs text-muted-foreground truncate">{song.artist}</p>
       </div>
+      <button
+        onClick={handleDownload}
+        className="shrink-0 text-muted-foreground/0 group-hover:text-muted-foreground/60 hover:!text-foreground transition-colors"
+        title="Download"
+      >
+        <Download className="w-4 h-4" />
+      </button>
       <button
         onClick={(e) => { e.stopPropagation(); toggleLike(song); }}
         className={`shrink-0 transition-colors ${liked ? 'text-accent' : 'text-muted-foreground/40 hover:text-muted-foreground'}`}

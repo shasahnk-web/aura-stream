@@ -1,6 +1,7 @@
 import { Home, Search, Library, Heart, ListMusic, Radio, TrendingUp, Music } from 'lucide-react';
 import { NavLink } from 'react-router-dom';
 import { motion } from 'framer-motion';
+import trmsLogo from '@/assets/trms-logo.png';
 
 const navItems = [
   { icon: Home, label: 'Home', path: '/' },
@@ -23,9 +24,12 @@ export default function Sidebar() {
       transition={{ duration: 0.4, ease: 'easeOut' }}
       className="hidden md:flex flex-col w-[240px] h-full glass border-r border-border/50 overflow-hidden"
     >
-      <div className="p-6 pb-2">
-        <h1 className="text-2xl font-bold font-display gradient-text tracking-tight">KanaKo</h1>
-        <p className="text-xs text-muted-foreground mt-1">Free Music For Everyone</p>
+      <div className="p-6 pb-2 flex items-center gap-3">
+        <img src={trmsLogo} alt="TRMS" className="w-10 h-10 rounded-lg" />
+        <div>
+          <h1 className="text-xl font-bold font-display gradient-text tracking-tight">TRMS</h1>
+          <p className="text-[10px] text-muted-foreground">Free Music For Everyone</p>
+        </div>
       </div>
 
       <nav className="px-3 mt-4">
@@ -76,7 +80,7 @@ export default function Sidebar() {
             <span className="text-xs font-semibold text-foreground">100% Free</span>
           </div>
           <p className="text-[10px] text-muted-foreground leading-relaxed">
-            Unlimited streaming, no ads, no limits. Enjoy music freely.
+            Unlimited streaming, no ads, no limits. Powered by TRMS.
           </p>
         </div>
       </div>
