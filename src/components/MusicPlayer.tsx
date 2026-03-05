@@ -161,16 +161,24 @@ export default function MusicPlayer() {
           exit={{ y: 100, opacity: 0 }}
           transition={{ type: 'spring', damping: 25, stiffness: 300 }}
           className="fixed bottom-16 md:bottom-0 left-0 right-0 z-50 glass border-t border-border/50"
-          style={{ backdropFilter: 'blur(30px)' }}
+          style={{ backdropFilter: 'blur(12px)' }}
         >
-          {/* Progress bar */}
-          <div className="absolute top-0 left-0 right-0 h-[2px] bg-secondary">
-            <div className="h-full bg-primary transition-all duration-150" style={{ width: `${progress}%` }} />
+          {/* Progress bar on top like reference */}
+          <div className="absolute top-0 left-0 right-0 h-[3px] bg-white/10">
+            <div
+              className="h-full rounded-r-sm relative"
+              style={{
+                width: `${progress}%`,
+                background: 'var(--gradient-primary)',
+              }}
+            >
+              <div className="absolute right-0 top-1/2 -translate-y-1/2 w-[10px] h-[10px] bg-white rounded-full shadow-md opacity-0 group-hover:opacity-100" />
+            </div>
           </div>
 
           {/* Mobile layout */}
           <div
-            className="flex md:hidden items-center h-16 px-3 gap-3 cursor-pointer"
+            className="flex md:hidden items-center h-[70px] px-4 gap-3 cursor-pointer"
             onClick={() => setNowPlayingOpen(true)}
           >
             <motion.img
@@ -179,30 +187,32 @@ export default function MusicPlayer() {
               animate={{ scale: 1, opacity: 1 }}
               src={currentSong.image}
               alt={currentSong.name}
-              className="w-11 h-11 rounded-lg object-cover shadow-lg"
+              className="w-[50px] h-[50px] rounded-xl object-cover shadow-lg"
             />
             <div className="min-w-0 flex-1">
-              <p className="text-xs font-semibold truncate text-foreground">{currentSong.name}</p>
-              <p className="text-[10px] text-muted-foreground truncate">{currentSong.artist}</p>
+              <p className="text-sm font-semibold truncate text-foreground">{currentSong.name}</p>
+              <p className="text-xs text-muted-foreground truncate">{currentSong.artist}</p>
             </div>
             <button
               onClick={(e) => { e.stopPropagation(); toggleLike(currentSong); }}
-              className={`transition-colors ${liked ? 'text-accent' : 'text-muted-foreground'}`}
+              className={`transition-all hover:scale-110 ${liked ? 'text-accent' : 'text-muted-foreground'}`}
             >
-              <Heart className="w-4 h-4" fill={liked ? 'currentColor' : 'none'} />
+              <Heart className="w-5 h-5" fill={liked ? 'currentColor' : 'none'} />
             </button>
             <button
               onClick={(e) => { e.stopPropagation(); togglePlay(); }}
-              className="w-9 h-9 rounded-full bg-foreground flex items-center justify-center"
+              className="w-[50px] h-[50px] rounded-full bg-foreground flex items-center justify-center shadow-lg"
+              style={{ boxShadow: '0 4px 15px hsl(270 76% 53% / 0.4)' }}
             >
-              {isPlaying ? <Pause className="w-4 h-4 text-background" /> : <Play className="w-4 h-4 text-background ml-0.5" />}
+              {isPlaying ? <Pause className="w-5 h-5 text-primary" /> : <Play className="w-5 h-5 text-primary ml-0.5" />}
             </button>
           </div>
 
           {/* Desktop layout */}
-          <div className="hidden md:flex items-center h-20 px-4 gap-4">
+          <div className="hidden md:flex items-center h-[90px] px-6 gap-4">
+            {/* Left: Song info */}
             <div
-              className="flex items-center gap-3 min-w-0 w-[280px] cursor-pointer"
+              className="flex items-center gap-4 min-w-0 w-[280px] cursor-pointer"
               onClick={() => setNowPlayingOpen(true)}
             >
               <motion.img
@@ -211,78 +221,70 @@ export default function MusicPlayer() {
                 animate={{ scale: 1, opacity: 1 }}
                 src={currentSong.image}
                 alt={currentSong.name}
-                className="w-14 h-14 rounded-lg object-cover shadow-lg"
+                className="w-[60px] h-[60px] rounded-xl object-cover shadow-lg"
               />
               <div className="min-w-0">
-                <p className="text-sm font-semibold truncate text-foreground">{currentSong.name}</p>
-                <p className="text-xs text-muted-foreground truncate">{currentSong.artist}</p>
+                <p className="text-base font-semibold truncate text-foreground">{currentSong.name}</p>
+                <p className="text-[13px] text-muted-foreground truncate">{currentSong.artist}</p>
               </div>
-              <button
-                onClick={(e) => { e.stopPropagation(); toggleLike(currentSong); }}
-                className={`ml-2 transition-colors shrink-0 ${liked ? 'text-accent' : 'text-muted-foreground hover:text-accent'}`}
-              >
-                <Heart className="w-4 h-4" fill={liked ? 'currentColor' : 'none'} />
-              </button>
             </div>
 
+            {/* Center: Controls */}
             <div className="flex-1 flex flex-col items-center gap-1 max-w-[600px] mx-auto">
-              <div className="flex items-center gap-4">
-                <button onClick={toggleShuffle} className={`transition-colors ${shuffle ? 'text-primary' : 'text-muted-foreground hover:text-foreground'}`}>
-                  <Shuffle className="w-4 h-4" />
-                </button>
-                <button onClick={playPrev} className="text-muted-foreground hover:text-foreground transition-colors">
+              <div className="flex items-center gap-3">
+                <button
+                  onClick={playPrev}
+                  className="w-10 h-10 rounded-full flex items-center justify-center text-foreground hover:bg-white/10 transition-all"
+                >
                   <SkipBack className="w-5 h-5" />
                 </button>
-                <button onClick={togglePlay} className="w-10 h-10 rounded-full bg-foreground flex items-center justify-center hover:scale-105 transition-transform">
-                  {isPlaying ? <Pause className="w-5 h-5 text-background" /> : <Play className="w-5 h-5 text-background ml-0.5" />}
+                <button
+                  onClick={togglePlay}
+                  className="w-[50px] h-[50px] rounded-full bg-foreground flex items-center justify-center hover:scale-105 transition-transform"
+                  style={{ boxShadow: '0 4px 15px hsl(270 76% 53% / 0.4)' }}
+                >
+                  {isPlaying ? <Pause className="w-6 h-6 text-primary" /> : <Play className="w-6 h-6 text-primary ml-0.5" />}
                 </button>
-                <button onClick={playNext} className="text-muted-foreground hover:text-foreground transition-colors">
+                <button
+                  onClick={playNext}
+                  className="w-10 h-10 rounded-full flex items-center justify-center text-foreground hover:bg-white/10 transition-all"
+                >
                   <SkipForward className="w-5 h-5" />
-                </button>
-                <button onClick={toggleRepeat} className={`transition-colors ${repeat !== 'off' ? 'text-primary' : 'text-muted-foreground hover:text-foreground'}`}>
-                  {repeat === 'one' ? <Repeat1 className="w-4 h-4" /> : <Repeat className="w-4 h-4" />}
                 </button>
               </div>
               <div className="flex items-center gap-2 w-full">
-                <span className="text-[10px] text-muted-foreground w-10 text-right">{formatTime(currentTime)}</span>
+                <span className="text-[11px] text-muted-foreground w-10 text-right">{formatTime(currentTime)}</span>
                 <input
                   type="range" min={0} max={duration || 0} value={currentTime} onChange={handleSeek}
-                  className="flex-1 h-1 bg-secondary rounded-full appearance-none cursor-pointer player-seek"
-                  style={{ background: `linear-gradient(to right, hsl(var(--primary)) ${progress}%, hsl(var(--muted)) ${progress}%)` }}
+                  className="flex-1 h-1 bg-white/10 rounded-full appearance-none cursor-pointer player-seek"
+                  style={{ background: `linear-gradient(to right, hsl(var(--primary)) ${progress}%, hsl(0 0% 100% / 0.1) ${progress}%)` }}
                 />
-                <span className="text-[10px] text-muted-foreground w-10">{formatTime(duration)}</span>
+                <span className="text-[11px] text-muted-foreground w-10">{formatTime(duration)}</span>
               </div>
             </div>
 
-            <div className="flex items-center gap-2 w-[280px] justify-end">
-              <AudioVisualizer audioElement={audioRef.current} barCount={16} className="h-8 w-24 mr-1" />
-              <button onClick={handleDownload} className="text-muted-foreground hover:text-foreground transition-colors" title="Download">
-                <Download className="w-4 h-4" />
+            {/* Right: Extra controls */}
+            <div className="flex items-center gap-3 w-[280px] justify-end">
+              <button
+                onClick={toggleShuffle}
+                className={`transition-all hover:scale-110 ${shuffle ? 'text-accent' : 'text-muted-foreground hover:text-foreground'}`}
+              >
+                <Shuffle className="w-[18px] h-[18px]" />
               </button>
-              <button onClick={() => setNowPlayingOpen(true)} className="text-muted-foreground hover:text-foreground transition-colors" title="Now Playing">
-                <Maximize2 className="w-4 h-4" />
+              <button
+                onClick={(e) => { toggleLike(currentSong); }}
+                className={`transition-all hover:scale-110 ${liked ? 'text-accent' : 'text-muted-foreground hover:text-foreground'}`}
+              >
+                <Heart className="w-[18px] h-[18px]" fill={liked ? 'currentColor' : 'none'} />
               </button>
-              <button onClick={() => setLyricsOpen(true)} className="text-muted-foreground hover:text-foreground transition-colors">
-                <Music2 className="w-4 h-4" />
-              </button>
-              <button onClick={() => setQueueOpen(true)} className="text-muted-foreground hover:text-foreground transition-colors">
-                <ListMusic className="w-4 h-4" />
-              </button>
-              <PlaybackControls
-                playbackRate={playbackRate}
-                onPlaybackRateChange={setPlaybackRate}
-                crossfadeDuration={crossfadeDuration}
-                onCrossfadeDurationChange={setCrossfadeDuration}
-              />
-              <SleepTimer />
-              <button onClick={() => setVolume(volume === 0 ? 0.7 : 0)} className="text-muted-foreground hover:text-foreground transition-colors">
-                <VolumeIcon className="w-4 h-4" />
+              <button onClick={() => setVolume(volume === 0 ? 0.7 : 0)} className="text-muted-foreground hover:text-foreground transition-all hover:scale-110">
+                <VolumeIcon className="w-[18px] h-[18px]" />
               </button>
               <input
                 type="range" min={0} max={1} step={0.01} value={volume}
                 onChange={(e) => setVolume(parseFloat(e.target.value))}
-                className="w-20 h-1 bg-secondary rounded-full appearance-none cursor-pointer player-seek"
-                style={{ background: `linear-gradient(to right, hsl(var(--primary)) ${volume * 100}%, hsl(var(--muted)) ${volume * 100}%)` }}
+                className="w-20 h-1 bg-white/10 rounded-full appearance-none cursor-pointer player-seek"
+                style={{ background: `linear-gradient(to right, hsl(var(--primary)) ${volume * 100}%, hsl(0 0% 100% / 0.1) ${volume * 100}%)` }}
               />
             </div>
           </div>

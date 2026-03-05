@@ -1,14 +1,14 @@
 import { usePlayerStore, Song, useLikedStore } from '@/store/playerStore';
-import { Play, Pause, Heart, Download } from 'lucide-react';
-import { motion } from 'framer-motion';
+import { Play, Pause, Heart, Download, MoreHorizontal } from 'lucide-react';
 
 interface SongCardProps {
   song: Song;
   songs?: Song[];
   index?: number;
+  showNumber?: boolean;
 }
 
-export default function SongCard({ song, songs, index = 0 }: SongCardProps) {
+export default function SongCard({ song, songs, index = 0, showNumber = true }: SongCardProps) {
   const { setCurrentSong, setQueue, currentSong, isPlaying, togglePlay } = usePlayerStore();
   const { isLiked, toggleLike } = useLikedStore();
   const isCurrentSong = currentSong?.id === song.id;
@@ -42,57 +42,75 @@ export default function SongCard({ song, songs, index = 0 }: SongCardProps) {
     }
   };
 
+  const duration = song.duration > 0
+    ? `${Math.floor(song.duration / 60)}:${(song.duration % 60).toString().padStart(2, '0')}`
+    : '';
+
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 10 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ delay: index * 0.03 }}
-      className="group flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-secondary/40 transition-all cursor-pointer"
+    <div
+      className="song-item group"
       onClick={handlePlay}
     >
-      <div className="relative w-10 h-10 rounded-md overflow-hidden shrink-0">
-        <img src={song.image} alt={song.name} className="w-full h-full object-cover" />
-        <div className="absolute inset-0 bg-background/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+      {/* Number */}
+      {showNumber && (
+        <div className="w-8 text-center text-muted-foreground text-sm font-medium shrink-0">
           {isCurrentSong && isPlaying ? (
-            <Pause className="w-4 h-4 text-foreground" />
+            <div className="flex items-center justify-center gap-[2px]">
+              {[0, 1, 2].map(i => (
+                <div
+                  key={i}
+                  className="w-[3px] bg-primary rounded-full animate-wave"
+                  style={{ animationDelay: `${i * 0.15}s`, height: '8px' }}
+                />
+              ))}
+            </div>
           ) : (
-            <Play className="w-4 h-4 text-foreground ml-0.5" />
+            <span>{index + 1}</span>
           )}
         </div>
-        {isCurrentSong && isPlaying && (
-          <div className="absolute bottom-0.5 left-1/2 -translate-x-1/2 flex gap-[2px]">
-            {[0, 1, 2].map(i => (
-              <div
-                key={i}
-                className="w-[3px] bg-primary rounded-full animate-wave"
-                style={{ animationDelay: `${i * 0.15}s`, height: '4px' }}
-              />
-            ))}
-          </div>
-        )}
+      )}
+
+      {/* Image */}
+      <div className="relative w-[50px] h-[50px] rounded-[10px] overflow-hidden mr-4 shrink-0 shadow-md">
+        <img src={song.image} alt={song.name} className="w-full h-full object-cover" />
+        <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+          {isCurrentSong && isPlaying ? (
+            <Pause className="w-5 h-5 text-foreground" />
+          ) : (
+            <Play className="w-5 h-5 text-foreground ml-0.5" />
+          )}
+        </div>
       </div>
-      <div className="min-w-0 flex-1">
-        <p className={`text-sm font-medium truncate ${isCurrentSong ? 'text-primary' : 'text-foreground'}`}>
+
+      {/* Info */}
+      <div className="flex-1 min-w-0">
+        <p className={`font-semibold text-[15px] truncate ${isCurrentSong ? 'text-primary' : 'text-foreground'}`}>
           {song.name}
         </p>
-        <p className="text-xs text-muted-foreground truncate">{song.artist}</p>
+        <p className="text-[13px] text-muted-foreground truncate">{song.artist}</p>
       </div>
-      <button
-        onClick={handleDownload}
-        className="shrink-0 text-muted-foreground/0 group-hover:text-muted-foreground/60 hover:!text-foreground transition-colors"
-        title="Download"
-      >
-        <Download className="w-4 h-4" />
-      </button>
-      <button
-        onClick={(e) => { e.stopPropagation(); toggleLike(song); }}
-        className={`shrink-0 transition-colors ${liked ? 'text-accent' : 'text-muted-foreground/40 hover:text-muted-foreground'}`}
-      >
-        <Heart className="w-4 h-4" fill={liked ? 'currentColor' : 'none'} />
-      </button>
-      <span className="text-xs text-muted-foreground hidden sm:block w-10 text-right">
-        {song.duration > 0 ? `${Math.floor(song.duration / 60)}:${(song.duration % 60).toString().padStart(2, '0')}` : ''}
-      </span>
-    </motion.div>
+
+      {/* Duration */}
+      {duration && (
+        <span className="text-[13px] text-muted-foreground mr-4 hidden sm:block">{duration}</span>
+      )}
+
+      {/* Actions */}
+      <div className="flex items-center gap-2.5">
+        <button
+          onClick={(e) => { e.stopPropagation(); toggleLike(song); }}
+          className={`transition-all hover:scale-110 ${liked ? 'text-accent' : 'text-muted-foreground hover:text-foreground'}`}
+        >
+          <Heart className="w-4 h-4" fill={liked ? 'currentColor' : 'none'} />
+        </button>
+        <button
+          onClick={handleDownload}
+          className="text-muted-foreground hover:text-foreground transition-all hover:scale-110"
+          title="Download"
+        >
+          <Download className="w-4 h-4" />
+        </button>
+      </div>
+    </div>
   );
 }

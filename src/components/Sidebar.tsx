@@ -23,24 +23,24 @@ export default function Sidebar() {
       transition={{ duration: 0.4, ease: 'easeOut' }}
       className="hidden md:flex flex-col w-[240px] h-full glass border-r border-border/50 overflow-hidden"
     >
-      <div className="p-6 pb-2 flex items-center gap-3">
-        <img src={kanakoLogo} alt="KanaKo" className="w-10 h-10 rounded-lg" />
+      <div className="p-5 pb-2 flex items-center gap-3">
+        <img src={kanakoLogo} alt="KanaKo" className="w-9 h-9 rounded-lg" />
         <div>
-          <h1 className="text-xl font-bold font-display gradient-text tracking-tight">KanaKo</h1>
+          <h1 className="text-lg font-bold gradient-text tracking-wide">KanaKo</h1>
           <p className="text-[10px] text-muted-foreground">by TRMS</p>
         </div>
       </div>
 
-      <nav className="px-3 mt-4">
+      <nav className="px-3 mt-5">
         {navItems.map((item) => (
           <NavLink
             key={item.path}
             to={item.path}
             className={({ isActive }) =>
-              `flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 group ${
+              `flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 group mb-0.5 ${
                 isActive
-                  ? 'bg-primary/15 text-foreground'
-                  : 'text-muted-foreground hover:text-foreground hover:bg-secondary/50'
+                  ? 'bg-white/10 text-foreground'
+                  : 'text-muted-foreground hover:text-foreground hover:bg-white/5'
               }`
             }
           >
@@ -59,10 +59,10 @@ export default function Sidebar() {
             key={item.label}
             to={item.path}
             className={({ isActive }) =>
-              `flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-all duration-200 ${
+              `flex items-center gap-3 px-3 py-2 rounded-xl text-sm transition-all duration-200 mb-0.5 ${
                 isActive
-                  ? 'text-foreground bg-secondary/40'
-                  : 'text-muted-foreground hover:text-foreground hover:bg-secondary/30'
+                  ? 'text-foreground bg-white/10'
+                  : 'text-muted-foreground hover:text-foreground hover:bg-white/5'
               }`
             }
           >
@@ -73,7 +73,7 @@ export default function Sidebar() {
       </div>
 
       <div className="mt-auto p-4">
-        <div className="glass rounded-xl p-4">
+        <div className="glass rounded-2xl p-4">
           <div className="flex items-center gap-2 mb-1">
             <Music className="w-4 h-4 text-primary" />
             <span className="text-xs font-semibold text-foreground">100% Free</span>
