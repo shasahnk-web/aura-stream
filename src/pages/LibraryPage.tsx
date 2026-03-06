@@ -4,12 +4,12 @@ import { fetchPlaylist, FEATURED_PLAYLISTS } from '@/services/musicApi';
 import { useLikedStore, usePlayerStore, Song } from '@/store/playerStore';
 import SongCard from '@/components/SongCard';
 import PlaylistCardRef from '@/components/PlaylistCardRef';
-import { Heart, Play, Shuffle, Radio } from 'lucide-react';
+import { MoreHorizontal } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useNavigate } from 'react-router-dom';
 
 const tabs = [
   { id: 'playlists', label: 'Playlists' },
-  { id: 'liked', label: 'Liked Songs' },
   { id: 'artists', label: 'Artists' },
   { id: 'albums', label: 'Albums' },
 ];
@@ -18,6 +18,7 @@ export default function LibraryPage() {
   const [activeTab, setActiveTab] = useState('playlists');
   const { likedSongs } = useLikedStore();
   const { setCurrentSong, setQueue } = usePlayerStore();
+  const navigate = useNavigate();
 
   const playlistQueries = FEATURED_PLAYLISTS.map(p => ({
     ...p,
@@ -29,21 +30,10 @@ export default function LibraryPage() {
 
   const loadedPlaylists = playlistQueries.filter(p => p.query.data);
 
-  const handlePlayAll = (songs: Song[]) => {
-    if (songs.length) { setQueue(songs); setCurrentSong(songs[0]); }
-  };
-
-  const handleShuffle = (songs: Song[]) => {
-    if (songs.length) {
-      const shuffled = [...songs].sort(() => Math.random() - 0.5);
-      setQueue(shuffled); setCurrentSong(shuffled[0]);
-    }
-  };
-
   return (
-    <div className="flex-1 overflow-y-auto scrollbar-thin pb-36 md:pb-28 px-4 md:px-6 pt-5">
-      {/* Library tabs like reference */}
-      <div className="flex gap-5 mb-6 border-b border-border/50 pb-1">
+    <div className="flex-1 overflow-y-auto scrollbar-thin pb-36 px-4 md:px-6 pt-5">
+      {/* Library tabs matching reference */}
+      <div className="flex gap-4 mb-6 border-b border-border/50 pb-1">
         {tabs.map(tab => (
           <button
             key={tab.id}
@@ -63,83 +53,75 @@ export default function LibraryPage() {
           exit={{ opacity: 0, y: -10 }}
           transition={{ duration: 0.2 }}
         >
-          {/* Playlists Tab */}
+          {/* Playlists Tab - song-item list style like reference */}
           {activeTab === 'playlists' && (
             <div>
-              {loadedPlaylists.length === 0 ? (
-                <div className="horizontal-scroll">
-                  {Array.from({ length: 4 }).map((_, i) => (
-                    <div key={i} className="min-w-[180px] h-[180px] rounded-2xl bg-secondary/30 animate-pulse shrink-0" />
-                  ))}
+              <h2 className="text-lg font-semibold text-foreground mb-4 flex items-center justify-between">
+                Your playlists
+                <span className="text-sm text-muted-foreground font-normal cursor-pointer hover:text-foreground transition-colors">See all</span>
+              </h2>
+              <div className="flex flex-col">
+                {/* Liked Songs entry */}
+                <div
+                  className="song-item"
+                  onClick={() => navigate('/liked')}
+                >
+                  <div className="relative w-[50px] h-[50px] rounded-[10px] overflow-hidden mr-4 shrink-0 shadow-md bg-gradient-to-br from-primary to-accent flex items-center justify-center">
+                    <span className="text-primary-foreground text-lg">♥</span>
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="font-semibold text-[15px] text-foreground truncate">Liked Songs</p>
+                    <p className="text-[13px] text-muted-foreground truncate">{likedSongs.length} songs</p>
+                  </div>
+                  <button className="text-muted-foreground hover:text-foreground transition-all">
+                    <MoreHorizontal className="w-5 h-5" />
+                  </button>
                 </div>
-              ) : (
-                <>
-                  <div className="horizontal-scroll mb-6">
-                    {loadedPlaylists.map((p) => (
-                      <PlaylistCardRef
-                        key={p.id}
-                        id={p.id}
-                        name={p.query.data!.name}
-                        image={p.query.data!.image}
-                        songCount={p.query.data!.songs.length}
-                        songs={p.query.data!.songs}
-                      />
+
+                {/* Loaded playlists as song-item rows */}
+                {loadedPlaylists.map((p) => (
+                  <div
+                    key={p.id}
+                    className="song-item"
+                    onClick={() => navigate(`/playlist/${p.id}`)}
+                  >
+                    <div className="relative w-[50px] h-[50px] rounded-[10px] overflow-hidden mr-4 shrink-0 shadow-md">
+                      <img src={p.query.data!.image} alt={p.query.data!.name} className="w-full h-full object-cover" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="font-semibold text-[15px] text-foreground truncate">{p.query.data!.name}</p>
+                      <p className="text-[13px] text-muted-foreground truncate">{p.query.data!.songs.length} songs</p>
+                    </div>
+                    <button className="text-muted-foreground hover:text-foreground transition-all">
+                      <MoreHorizontal className="w-5 h-5" />
+                    </button>
+                  </div>
+                ))}
+
+                {loadedPlaylists.length === 0 && (
+                  <div className="space-y-2.5">
+                    {Array.from({ length: 4 }).map((_, i) => (
+                      <div key={i} className="song-item animate-pulse">
+                        <div className="w-[50px] h-[50px] bg-secondary rounded-[10px] mr-4" />
+                        <div className="flex-1 space-y-2">
+                          <div className="h-4 bg-secondary rounded w-1/2" />
+                          <div className="h-3 bg-secondary rounded w-1/3" />
+                        </div>
+                      </div>
                     ))}
                   </div>
-                  {/* Show first playlist songs */}
-                  {loadedPlaylists[0]?.query.data?.songs && (
-                    <div>
-                      <h3 className="text-lg font-semibold text-foreground mb-3">
-                        {loadedPlaylists[0].query.data.name}
-                      </h3>
-                      <div className="flex flex-col">
-                        {loadedPlaylists[0].query.data.songs.slice(0, 8).map((song, i) => (
-                          <SongCard key={song.id} song={song} songs={loadedPlaylists[0].query.data!.songs} index={i} />
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                </>
-              )}
+                )}
+              </div>
             </div>
           )}
 
-          {/* Liked Songs Tab */}
-          {activeTab === 'liked' && (
-            <div>
-              {likedSongs.length > 0 && (
-                <div className="flex gap-3 mb-5">
-                  <button
-                    onClick={() => handlePlayAll(likedSongs)}
-                    className="px-6 py-2.5 rounded-full font-semibold text-sm text-primary-foreground flex items-center gap-2 shadow-lg"
-                    style={{ background: 'var(--gradient-primary)' }}
-                  >
-                    <Play className="w-4 h-4 ml-0.5" /> Play All
-                  </button>
-                  <button onClick={() => handleShuffle(likedSongs)} className="px-5 py-2.5 rounded-full glass text-foreground font-semibold text-sm hover:bg-white/10 transition-colors flex items-center gap-2">
-                    <Shuffle className="w-4 h-4" /> Shuffle
-                  </button>
-                </div>
-              )}
-              {likedSongs.length === 0 ? (
-                <div className="text-center py-20">
-                  <Heart className="w-16 h-16 text-muted-foreground/30 mx-auto mb-4" />
-                  <h2 className="text-xl font-semibold text-foreground mb-2">No liked songs yet</h2>
-                  <p className="text-sm text-muted-foreground">Tap the heart icon on any song to save it here.</p>
-                </div>
-              ) : (
-                <div className="flex flex-col">
-                  {likedSongs.map((song, i) => (
-                    <SongCard key={song.id} song={song} songs={likedSongs} index={i} />
-                  ))}
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* Artists Tab */}
+          {/* Artists Tab - circular cards horizontal scroll like reference */}
           {activeTab === 'artists' && (
             <div>
+              <h2 className="text-lg font-semibold text-foreground mb-4 flex items-center justify-between">
+                Your artists
+                <span className="text-sm text-muted-foreground font-normal cursor-pointer hover:text-foreground transition-colors">See all</span>
+              </h2>
               <div className="horizontal-scroll">
                 {loadedPlaylists.map((p) => {
                   const artist = p.query.data?.songs?.[0]?.artist || p.name;
@@ -149,7 +131,7 @@ export default function LibraryPage() {
                       <div className="w-[150px] h-[150px] rounded-full overflow-hidden border-[3px] border-border/50 shadow-lg mx-auto mb-3 group-hover:-translate-y-1 transition-transform">
                         <img src={image} alt={artist} className="w-full h-full object-cover" />
                       </div>
-                      <p className="font-semibold text-foreground text-sm">{artist}</p>
+                      <p className="font-semibold text-foreground text-[16px]">{artist}</p>
                       <p className="text-xs text-muted-foreground">Artist</p>
                     </div>
                   );
@@ -158,9 +140,13 @@ export default function LibraryPage() {
             </div>
           )}
 
-          {/* Albums Tab */}
+          {/* Albums Tab - playlist cards horizontal scroll like reference */}
           {activeTab === 'albums' && (
             <div>
+              <h2 className="text-lg font-semibold text-foreground mb-4 flex items-center justify-between">
+                Your albums
+                <span className="text-sm text-muted-foreground font-normal cursor-pointer hover:text-foreground transition-colors">See all</span>
+              </h2>
               <div className="horizontal-scroll">
                 {loadedPlaylists.map((p) => (
                   <PlaylistCardRef

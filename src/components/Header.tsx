@@ -7,29 +7,29 @@ export default function Header() {
   const location = useLocation();
 
   return (
-    <header className="glass border-b border-border/50 px-4 md:px-6 py-3 flex items-center justify-between z-50 shrink-0">
+    <header className="glass border-b border-border/50 px-5 py-[18px] flex items-center justify-between z-50 shrink-0">
       {/* Logo */}
-      <div className="flex items-center gap-2 cursor-pointer" onClick={() => navigate('/')}>
-        <img src={kanakoLogo} alt="KanaKo" className="w-8 h-8 rounded-lg" />
-        <span className="text-xl font-bold gradient-text tracking-wide font-display">KanaKo</span>
+      <div className="cursor-pointer" onClick={() => navigate('/')}>
+        <span className="text-[26px] font-bold gradient-text tracking-wide">KanaKo</span>
       </div>
 
       {/* Right actions */}
-      <div className="flex items-center gap-4">
+      <div className="flex items-center gap-5">
         <button
           onClick={() => navigate('/search')}
           className={`text-muted-foreground hover:text-foreground transition-all hover:scale-110 ${location.pathname === '/search' ? 'text-foreground' : ''}`}
         >
-          <Search className="w-5 h-5" />
+          <Search className="w-[18px] h-[18px]" />
         </button>
         <button className="text-muted-foreground hover:text-foreground transition-all hover:scale-110">
-          <Bell className="w-5 h-5" />
+          <Bell className="w-[18px] h-[18px]" />
         </button>
         <div
-          className="w-9 h-9 rounded-full flex items-center justify-center cursor-pointer border-2 border-border/50 overflow-hidden"
+          onClick={() => navigate('/profile')}
+          className="w-[42px] h-[42px] rounded-full flex items-center justify-center cursor-pointer border-2 border-border/50 overflow-hidden"
           style={{ background: 'var(--gradient-primary)' }}
         >
-          <User className="w-4 h-4 text-primary-foreground" />
+          <User className="w-5 h-5 text-primary-foreground" />
         </div>
       </div>
     </header>
