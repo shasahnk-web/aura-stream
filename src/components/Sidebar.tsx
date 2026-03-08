@@ -2,6 +2,7 @@ import { Home, Search, Library, Heart, ListMusic, Radio, TrendingUp, Music } fro
 import { NavLink } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import kanakoLogo from '@/assets/kanako-logo.png';
+import { Send } from 'lucide-react';
 
 const navItems = [
   { icon: Home, label: 'Home', path: '/' },
@@ -24,9 +25,9 @@ export default function Sidebar() {
       className="hidden md:flex flex-col w-[240px] h-full glass border-r border-border/50 overflow-hidden"
     >
       <div className="p-5 pb-2 flex items-center gap-3">
-        <img src={kanakoLogo} alt="KanaKo" className="w-9 h-9 rounded-lg" />
+        <img src={kanakoLogo} alt="KanaKö" className="w-9 h-9 rounded-lg" />
         <div>
-          <h1 className="text-lg font-bold gradient-text tracking-wide">KanaKo</h1>
+          <h1 className="text-lg font-bold gradient-text tracking-wide">KanaKö</h1>
           <p className="text-[10px] text-muted-foreground">by TRMS</p>
         </div>
       </div>
@@ -72,7 +73,21 @@ export default function Sidebar() {
         ))}
       </div>
 
-      <div className="mt-auto p-4">
+      <div className="mt-auto p-4 space-y-3">
+        {/* Telegram button */}
+        <a
+          href="https://t.me/traboratory"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="flex items-center gap-3 px-4 py-2.5 rounded-xl glass hover:bg-white/10 transition-all group cursor-pointer"
+        >
+          <Send className="w-5 h-5 text-[#29b6f6] group-hover:scale-110 transition-transform" />
+          <div>
+            <span className="text-sm font-medium text-foreground">Telegram</span>
+            <p className="text-[10px] text-muted-foreground">Join our channel</p>
+          </div>
+        </a>
+
         <div className="glass rounded-2xl p-4">
           <div className="flex items-center gap-2 mb-1">
             <Music className="w-4 h-4 text-primary" />
