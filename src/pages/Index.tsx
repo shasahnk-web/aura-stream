@@ -7,8 +7,10 @@ import SpotifyRecommendations from '@/components/SpotifyRecommendations';
 import NewReleases from '@/components/NewReleases';
 import { usePlayerStore, Song } from '@/store/playerStore';
 import { motion } from 'framer-motion';
+import { useAutoplay } from '@/hooks/useAutoplay';
 
 export default function HomePage() {
+  useAutoplay();
   const playlistQueries = FEATURED_PLAYLISTS.map(p => ({
     ...p,
     query: useQuery({
