@@ -25,7 +25,7 @@ export default function Sidebar() {
       className="hidden md:flex flex-col w-[240px] h-full glass border-r border-border/50 overflow-hidden"
     >
       <div className="p-5 pb-2 flex items-center gap-3">
-        <img src={kanakoLogo} alt="KanaKö" className="w-9 h-9 rounded-lg" />
+        <img src={kanakoLogo} alt="KanaKö" className="w-11 h-11 rounded-lg" />
         <div>
           <h1 className="text-lg font-bold gradient-text tracking-wide">KanaKö</h1>
           <p className="text-[10px] text-muted-foreground">by TRMS</p>
@@ -88,15 +88,6 @@ export default function Sidebar() {
           </div>
         </a>
 
-        <div className="glass rounded-2xl p-4">
-          <div className="flex items-center gap-2 mb-1">
-            <Music className="w-4 h-4 text-primary" />
-            <span className="text-xs font-semibold text-foreground">100% Free</span>
-          </div>
-          <p className="text-[10px] text-muted-foreground leading-relaxed">
-            Unlimited streaming, no ads, no limits. Powered by TRMS.
-          </p>
-        </div>
       </div>
     </motion.aside>
   );

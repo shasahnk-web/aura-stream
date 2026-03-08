@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -16,9 +17,17 @@ import ArtistPage from "./pages/ArtistPage";
 import TrendingPage from "./pages/TrendingPage";
 import RadioPage from "./pages/RadioPage";
 import LibraryPage from "./pages/LibraryPage";
+import ProfilePage from "./pages/ProfilePage";
 import NotFound from "./pages/NotFound";
+import { useAuthStore } from "@/store/authStore";
 
 const queryClient = new QueryClient();
+
+function AuthInit() {
+  const { init } = useAuthStore();
+  useEffect(() => { init(); }, []);
+  return null;
+}
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
@@ -26,6 +35,7 @@ const App = () => (
       <Toaster />
       <Sonner />
       <BrowserRouter>
+        <AuthInit />
         <DynamicBackground />
         <div className="flex h-screen w-screen overflow-hidden relative">
           <Sidebar />
@@ -41,6 +51,7 @@ const App = () => (
                 <Route path="/library" element={<LibraryPage />} />
                 <Route path="/trending" element={<TrendingPage />} />
                 <Route path="/radio" element={<RadioPage />} />
+                <Route path="/profile" element={<ProfilePage />} />
                 <Route path="*" element={<NotFound />} />
               </Routes>
             </main>
