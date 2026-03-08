@@ -1,7 +1,11 @@
+import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { fetchPlaylist, FEATURED_PLAYLISTS } from '@/services/musicApi';
 import PlaylistCardRef from '@/components/PlaylistCardRef';
 import SongCard from '@/components/SongCard';
+import SpotifyRecommendations from '@/components/SpotifyRecommendations';
+import NewReleases from '@/components/NewReleases';
+import { usePlayerStore, Song } from '@/store/playerStore';
 import { motion } from 'framer-motion';
 
 export default function HomePage() {
@@ -14,17 +18,35 @@ export default function HomePage() {
   }));
 
   const loadedPlaylists = playlistQueries.filter(p => p.query.data);
-  const trendingSongs = loadedPlaylists[0]?.query.data?.songs?.slice(0, 5) || [];
+  const trendingSongs = loadedPlaylists[0]?.query.data?.songs?.slice(0, 8) || [];
+
+  const greeting = () => {
+    const h = new Date().getHours();
+    if (h < 12) return 'Good Morning';
+    if (h < 17) return 'Good Afternoon';
+    return 'Good Evening';
+  };
 
   return (
-    <div className="flex-1 overflow-y-auto scrollbar-thin pb-40 px-5 pt-5">
-      {/* Recently Played */}
+    <div className="flex-1 overflow-y-auto scrollbar-thin pb-36 md:pb-28 px-4 md:px-6 pt-5">
+      {/* Greeting */}
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5 }}
+        className="mb-6"
+      >
+        <h1 className="text-2xl md:text-3xl font-bold font-display text-foreground">{greeting()}</h1>
+        <p className="text-muted-foreground text-sm mt-1">Discover your next favorite track</p>
+      </motion.div>
+
+      {/* Recently Played - Horizontal scroll */}
       {loadedPlaylists.length > 0 && (
         <section className="mb-8">
-          <h2 className="text-xl font-semibold text-foreground mb-5 flex items-center justify-between">
-            Recently Played
-            <span className="text-sm text-muted-foreground font-normal cursor-pointer hover:text-foreground transition-colors">See all</span>
-          </h2>
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-lg font-semibold text-foreground">Recently Played</h2>
+            <span className="text-sm text-muted-foreground cursor-pointer hover:text-foreground transition-colors">See all</span>
+          </div>
           <div className="horizontal-scroll">
             {loadedPlaylists.map((p) => (
               <PlaylistCardRef
@@ -40,13 +62,31 @@ export default function HomePage() {
         </section>
       )}
 
-      {/* Made For You */}
+      {/* Spotify Recommendations */}
+      <SpotifyRecommendations />
+
+      {/* New Releases / Trending */}
+      <NewReleases />
+
+      {/* Popular Songs */}
+      {trendingSongs.length > 0 && (
+        <section className="mb-8">
+          <h2 className="text-lg font-semibold text-foreground mb-4">Popular Songs</h2>
+          <div className="flex flex-col">
+            {trendingSongs.map((song, i) => (
+              <SongCard key={song.id} song={song} songs={trendingSongs} index={i} />
+            ))}
+          </div>
+        </section>
+      )}
+
+      {/* Made For You - horizontal playlists */}
       {loadedPlaylists.length > 1 && (
         <section className="mb-8">
-          <h2 className="text-xl font-semibold text-foreground mb-5 flex items-center justify-between">
-            Made For You
-            <span className="text-sm text-muted-foreground font-normal cursor-pointer hover:text-foreground transition-colors">See all</span>
-          </h2>
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-lg font-semibold text-foreground">Made For You</h2>
+            <span className="text-sm text-muted-foreground cursor-pointer hover:text-foreground transition-colors">See all</span>
+          </div>
           <div className="horizontal-scroll">
             {loadedPlaylists.slice(1).map((p) => (
               <PlaylistCardRef
@@ -57,18 +97,6 @@ export default function HomePage() {
                 songCount={p.query.data!.songs.length}
                 songs={p.query.data!.songs}
               />
-            ))}
-          </div>
-        </section>
-      )}
-
-      {/* Popular Songs */}
-      {trendingSongs.length > 0 && (
-        <section className="mb-8">
-          <h2 className="text-xl font-semibold text-foreground mb-5">Popular Songs</h2>
-          <div className="flex flex-col">
-            {trendingSongs.map((song, i) => (
-              <SongCard key={song.id} song={song} songs={trendingSongs} index={i} />
             ))}
           </div>
         </section>

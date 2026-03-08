@@ -45,7 +45,14 @@
     --shadow-glow: 0 0 40px hsl(270 76% 53% / 0.15);
     --shadow-card: 0 8px 32px hsl(0 0% 0% / 0.3);
 
-    --player-height: 90px;
+    --sidebar-background: 235 25% 11%;
+    --sidebar-foreground: 0 0% 85%;
+    --sidebar-primary: 270 76% 53%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 240 15% 18%;
+    --sidebar-accent-foreground: 0 0% 95%;
+    --sidebar-border: 240 10% 20%;
+    --sidebar-ring: 270 76% 53%;
   }
 }
 

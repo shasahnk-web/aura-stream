@@ -5,9 +5,19 @@ import SongCard from '@/components/SongCard';
 import PlaylistCardRef from '@/components/PlaylistCardRef';
 import { Search as SearchIcon } from 'lucide-react';
 import { motion } from 'framer-motion';
-import { fetchPlaylist, FEATURED_PLAYLISTS } from '@/services/musicApi';
 
 const CATEGORIES = ['All', 'Songs', 'Artists', 'Playlists', 'Albums', 'Podcasts', 'Genres'];
+
+const BROWSE_GENRES = [
+  { name: 'Pop', gradient: 'from-pink-500 to-rose-400' },
+  { name: 'Hip Hop', gradient: 'from-amber-500 to-orange-400' },
+  { name: 'Rock', gradient: 'from-red-600 to-red-400' },
+  { name: 'Electronic', gradient: 'from-cyan-500 to-blue-400' },
+  { name: 'Jazz', gradient: 'from-emerald-500 to-teal-400' },
+  { name: 'Classical', gradient: 'from-purple-500 to-violet-400' },
+  { name: 'R&B', gradient: 'from-fuchsia-500 to-pink-400' },
+  { name: 'Bollywood', gradient: 'from-yellow-500 to-amber-400' },
+];
 
 export default function SearchPage() {
   const [query, setQuery] = useState('');
@@ -20,16 +30,6 @@ export default function SearchPage() {
     enabled: debouncedQuery.length > 1,
   });
 
-  // Browse all playlists
-  const browseQueries = FEATURED_PLAYLISTS.slice(0, 4).map(p => ({
-    ...p,
-    query: useQuery({
-      queryKey: ['playlist-meta', p.id],
-      queryFn: () => fetchPlaylist(p.id),
-    }),
-  }));
-  const loadedBrowse = browseQueries.filter(p => p.query.data);
-
   const handleInput = (val: string) => {
     setQuery(val);
     clearTimeout((window as any).__searchTimer);
@@ -37,11 +37,11 @@ export default function SearchPage() {
   };
 
   return (
-    <div className="flex-1 overflow-y-auto scrollbar-thin pb-40 px-5 pt-5">
+    <div className="flex-1 overflow-y-auto scrollbar-thin pb-36 md:pb-28 px-4 md:px-6 pt-5">
       {/* Search bar - glass container like reference */}
       <div className="glass rounded-2xl p-5 mb-6">
         <div className="flex items-center bg-white/10 rounded-full px-5 py-3 transition-all focus-within:bg-white/15">
-          <SearchIcon className="w-[18px] h-[18px] text-muted-foreground mr-3 shrink-0" />
+          <SearchIcon className="w-5 h-5 text-muted-foreground mr-3 shrink-0" />
           <input
             type="text"
             value={query}
@@ -92,45 +92,25 @@ export default function SearchPage() {
         </div>
       )}
 
-      {/* Browse all - horizontal playlist cards like reference */}
+      {/* Browse genres */}
       {!debouncedQuery && (
-        <>
-          <section className="mb-8">
-            <h2 className="text-xl font-semibold text-foreground mb-5">Browse all</h2>
-            <div className="horizontal-scroll">
-              {loadedBrowse.map((p) => (
-                <PlaylistCardRef
-                  key={p.id}
-                  id={p.id}
-                  name={p.query.data!.name}
-                  image={p.query.data!.image}
-                  songCount={p.query.data!.songs.length}
-                  songs={p.query.data!.songs}
-                />
-              ))}
-            </div>
-          </section>
-
-          {/* Popular artists - circular cards like reference */}
-          <section className="mb-8">
-            <h2 className="text-xl font-semibold text-foreground mb-5">Popular artists</h2>
-            <div className="horizontal-scroll">
-              {loadedBrowse.map((p) => {
-                const artist = p.query.data?.songs?.[0]?.artist || p.name;
-                const image = p.query.data?.songs?.[0]?.image || '';
-                return (
-                  <div key={p.id} className="text-center cursor-pointer group shrink-0" style={{ minWidth: 150 }}>
-                    <div className="w-[150px] h-[150px] rounded-full overflow-hidden border-[3px] border-border/50 shadow-lg mx-auto mb-4 group-hover:-translate-y-1 transition-transform">
-                      <img src={image} alt={artist} className="w-full h-full object-cover" />
-                    </div>
-                    <p className="font-semibold text-foreground text-[16px] mb-1">{artist}</p>
-                    <p className="text-xs text-muted-foreground">Artist</p>
-                  </div>
-                );
-              })}
-            </div>
-          </section>
-        </>
+        <section>
+          <h2 className="text-lg font-semibold text-foreground mb-4">Browse all</h2>
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
+            {BROWSE_GENRES.map((g, i) => (
+              <motion.div
+                key={g.name}
+                initial={{ opacity: 0, scale: 0.9 }}
+                animate={{ opacity: 1, scale: 1 }}
+                transition={{ delay: i * 0.05 }}
+                onClick={() => handleInput(g.name)}
+                className={`bg-gradient-to-br ${g.gradient} rounded-2xl p-6 cursor-pointer hover:scale-105 transition-transform shadow-lg`}
+              >
+                <span className="text-sm font-bold text-white">{g.name}</span>
+              </motion.div>
+            ))}
+          </div>
+        </section>
       )}
     </div>
   );
