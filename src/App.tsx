@@ -53,6 +53,7 @@ const App = () => (
                 <Route path="/trending" element={<TrendingPage />} />
                 <Route path="/radio" element={<RadioPage />} />
                 <Route path="/profile" element={<ProfilePage />} />
+                <Route path="/settings" element={<SettingsPage />} />
                 <Route path="*" element={<NotFound />} />
               </Routes>
             </main>
