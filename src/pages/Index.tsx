@@ -63,6 +63,9 @@ export default function HomePage() {
         <p className="text-muted-foreground text-sm mt-1">Discover your next favorite track</p>
       </motion.div>
 
+      {/* Friends Activity */}
+      <FriendsActivity />
+
       {/* Recently Played - Horizontal scroll */}
       {loadedPlaylists.length > 0 && (
         <section className="mb-8">
