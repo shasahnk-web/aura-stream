@@ -14,6 +14,30 @@ export type Database = {
   }
   public: {
     Tables: {
+      friendships: {
+        Row: {
+          addressee_id: string
+          created_at: string
+          id: string
+          requester_id: string
+          status: string
+        }
+        Insert: {
+          addressee_id: string
+          created_at?: string
+          id?: string
+          requester_id: string
+          status?: string
+        }
+        Update: {
+          addressee_id?: string
+          created_at?: string
+          id?: string
+          requester_id?: string
+          status?: string
+        }
+        Relationships: []
+      }
       liked_songs: {
         Row: {
           created_at: string
@@ -62,6 +86,162 @@ export type Database = {
           id?: string
           name?: string
           updated_at?: string
+        }
+        Relationships: []
+      }
+      room_members: {
+        Row: {
+          id: string
+          joined_at: string
+          room_id: string
+          user_id: string
+          user_name: string
+        }
+        Insert: {
+          id?: string
+          joined_at?: string
+          room_id: string
+          user_id: string
+          user_name: string
+        }
+        Update: {
+          id?: string
+          joined_at?: string
+          room_id?: string
+          user_id?: string
+          user_name?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "room_members_room_id_fkey"
+            columns: ["room_id"]
+            isOneToOne: false
+            referencedRelation: "rooms"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      room_messages: {
+        Row: {
+          created_at: string
+          id: string
+          message: string
+          room_id: string
+          user_name: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          message: string
+          room_id: string
+          user_name: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          message?: string
+          room_id?: string
+          user_name?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "room_messages_room_id_fkey"
+            columns: ["room_id"]
+            isOneToOne: false
+            referencedRelation: "rooms"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      rooms: {
+        Row: {
+          created_at: string
+          current_song: Json | null
+          host_id: string
+          id: string
+          is_playing: boolean
+          playback_time: number
+          room_name: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          current_song?: Json | null
+          host_id: string
+          id: string
+          is_playing?: boolean
+          playback_time?: number
+          room_name?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          current_song?: Json | null
+          host_id?: string
+          id?: string
+          is_playing?: boolean
+          playback_time?: number
+          room_name?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      song_requests: {
+        Row: {
+          created_at: string
+          id: string
+          requested_by: string
+          room_id: string
+          song_data: Json
+          status: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          requested_by: string
+          room_id: string
+          song_data: Json
+          status?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          requested_by?: string
+          room_id?: string
+          song_data?: Json
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "song_requests_room_id_fkey"
+            columns: ["room_id"]
+            isOneToOne: false
+            referencedRelation: "rooms"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      user_activity: {
+        Row: {
+          action: string
+          id: string
+          song_data: Json | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          action?: string
+          id?: string
+          song_data?: Json | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          action?: string
+          id?: string
+          song_data?: Json | null
+          updated_at?: string
+          user_id?: string
         }
         Relationships: []
       }

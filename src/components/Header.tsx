@@ -29,9 +29,9 @@ export default function Header() {
   return (
     <>
       <header className="glass border-b border-border/50 px-4 md:px-6 py-3 flex items-center justify-between z-50 shrink-0">
-        <div className="flex items-center gap-2 cursor-pointer" onClick={() => navigate('/')}>
-          <img src={kanakoLogo} alt="KanaKö" className="w-10 h-10 rounded-lg" />
-          <span className="text-xl font-bold gradient-text tracking-wide font-display">KanaKö</span>
+        <div className="flex items-center gap-3 cursor-pointer" onClick={() => navigate('/')}>
+          <img src={kanakoLogo} alt="KanaKö" className="w-12 h-12 md:w-14 md:h-14 rounded-xl shadow-lg" />
+          <span className="text-xl md:text-2xl font-bold gradient-text tracking-wide font-display">KanaKö</span>
         </div>
 
         <div className="flex items-center gap-4">

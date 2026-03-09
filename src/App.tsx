@@ -19,6 +19,9 @@ import RadioPage from "./pages/RadioPage";
 import LibraryPage from "./pages/LibraryPage";
 import ProfilePage from "./pages/ProfilePage";
 import SettingsPage from "./pages/SettingsPage";
+import TogetherPage from "./pages/TogetherPage";
+import RoomPage from "./pages/RoomPage";
+import FriendsPage from "./pages/FriendsPage";
 import NotFound from "./pages/NotFound";
 import { useAuthStore } from "@/store/authStore";
 
@@ -54,6 +57,9 @@ const App = () => (
                 <Route path="/radio" element={<RadioPage />} />
                 <Route path="/profile" element={<ProfilePage />} />
                 <Route path="/settings" element={<SettingsPage />} />
+                <Route path="/together" element={<TogetherPage />} />
+                <Route path="/room/:id" element={<RoomPage />} />
+                <Route path="/friends" element={<FriendsPage />} />
                 <Route path="*" element={<NotFound />} />
               </Routes>
             </main>

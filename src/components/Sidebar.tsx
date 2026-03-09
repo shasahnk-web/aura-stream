@@ -4,6 +4,8 @@ import { motion } from 'framer-motion';
 import kanakoLogo from '@/assets/kanako-logo.png';
 import { Send } from 'lucide-react';
 
+import { Users, Headphones } from 'lucide-react';
+
 const navItems = [
   { icon: Home, label: 'Home', path: '/' },
   { icon: Search, label: 'Search', path: '/search' },
@@ -14,6 +16,8 @@ const libraryItems = [
   { icon: Heart, label: 'Liked Songs', path: '/liked' },
   { icon: TrendingUp, label: 'Trending', path: '/trending' },
   { icon: Radio, label: 'Radio', path: '/radio' },
+  { icon: Headphones, label: 'Together', path: '/together' },
+  { icon: Users, label: 'Friends', path: '/friends' },
   { icon: Settings, label: 'Settings', path: '/settings' },
 ];
 
@@ -26,9 +30,9 @@ export default function Sidebar() {
       className="hidden md:flex flex-col w-[240px] h-full glass border-r border-border/50 overflow-hidden"
     >
       <div className="p-5 pb-2 flex items-center gap-3">
-        <img src={kanakoLogo} alt="KanaKö" className="w-11 h-11 rounded-lg" />
+        <img src={kanakoLogo} alt="KanaKö" className="w-14 h-14 rounded-xl shadow-lg" />
         <div>
-          <h1 className="text-lg font-bold gradient-text tracking-wide">KanaKö</h1>
+          <h1 className="text-xl font-bold gradient-text tracking-wide">KanaKö</h1>
           <p className="text-[10px] text-muted-foreground">by TRMS</p>
         </div>
       </div>

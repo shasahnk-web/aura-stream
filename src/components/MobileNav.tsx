@@ -1,11 +1,14 @@
-import { Home, Search, Send, Music, Settings } from 'lucide-react';
+import { Home, Search, Music, Settings, Headphones } from 'lucide-react';
 import { NavLink } from 'react-router-dom';
 
-const items = [
+const leftItems = [
   { icon: Home, label: 'Home', path: '/' },
   { icon: Search, label: 'Search', path: '/search' },
+];
+
+const rightItems = [
   { icon: Music, label: 'Library', path: '/library' },
-  { icon: Settings, label: 'Settings', path: '/trending' },
+  { icon: Settings, label: 'Settings', path: '/settings' },
 ];
 
 export default function MobileNav() {
@@ -14,69 +17,82 @@ export default function MobileNav() {
       className="fixed bottom-0 left-0 right-0 z-[60] md:hidden glass border-t border-border/50"
       style={{ backdropFilter: 'blur(12px)' }}
     >
-      <div className="flex items-center justify-around h-16 px-1 relative">
+      <div className="flex items-center justify-between h-16 px-2">
         {/* Left items */}
-        {items.slice(0, 2).map((item) => (
-          <NavLink
-            key={item.path}
-            to={item.path}
-            className={({ isActive }) =>
-              `flex flex-col items-center gap-1 px-3 py-1 rounded-lg transition-all duration-300 ${
-                isActive ? 'text-foreground -translate-y-1' : 'text-muted-foreground'
-              }`
-            }
-          >
-            {({ isActive }) => (
-              <>
-                <item.icon
-                  className={`w-[22px] h-[22px] transition-all ${isActive ? 'gradient-text' : ''}`}
-                  style={isActive ? { stroke: 'url(#nav-gradient)' } : {}}
-                />
-                <span className="text-[11px] font-medium">{item.label}</span>
-              </>
-            )}
-          </NavLink>
-        ))}
+        <div className="flex items-center gap-1">
+          {leftItems.map((item) => (
+            <NavLink
+              key={item.path}
+              to={item.path}
+              className={({ isActive }) =>
+                `flex flex-col items-center gap-1 px-4 py-1 rounded-lg transition-all duration-300 ${
+                  isActive ? 'text-foreground -translate-y-1' : 'text-muted-foreground'
+                }`
+              }
+            >
+              {({ isActive }) => (
+                <>
+                  <item.icon
+                    className={`w-[22px] h-[22px] transition-all ${isActive ? 'gradient-text' : ''}`}
+                    style={isActive ? { stroke: 'url(#nav-gradient)' } : {}}
+                  />
+                  <span className="text-[11px] font-medium">{item.label}</span>
+                </>
+              )}
+            </NavLink>
+          ))}
+        </div>
 
-        {/* Center Telegram button */}
-        <a
-          href="https://t.me/traboratory"
-          target="_blank"
-          rel="noopener noreferrer"
-          className="absolute left-1/2 -translate-x-1/2 -top-5 w-14 h-14 rounded-full bg-foreground flex items-center justify-center shadow-lg z-10 border-4 border-background"
+        {/* Center Together button */}
+        <NavLink
+          to="/together"
+          className={({ isActive }) =>
+            `flex flex-col items-center justify-center w-16 h-16 -mt-6 rounded-full shadow-lg border-4 border-background transition-all ${
+              isActive 
+                ? 'bg-gradient-to-br from-primary to-accent text-primary-foreground' 
+                : 'bg-foreground text-primary'
+            }`
+          }
         >
-          <Send className="w-6 h-6 text-primary" />
-        </a>
+          {({ isActive }) => (
+            <>
+              <Headphones className={`w-6 h-6 ${isActive ? 'text-primary-foreground' : 'text-primary'}`} />
+              <span className={`text-[9px] font-semibold mt-0.5 ${isActive ? 'text-primary-foreground' : 'text-primary'}`}>Together</span>
+            </>
+          )}
+        </NavLink>
 
         {/* Right items */}
-        {items.slice(2).map((item) => (
-          <NavLink
-            key={item.path}
-            to={item.path}
-            className={({ isActive }) =>
-              `flex flex-col items-center gap-1 px-3 py-1 rounded-lg transition-all duration-300 ${
-                isActive ? 'text-foreground -translate-y-1' : 'text-muted-foreground'
-              }`
-            }
-          >
-            {({ isActive }) => (
-              <>
-                <item.icon
-                  className={`w-[22px] h-[22px] transition-all ${isActive ? 'gradient-text' : ''}`}
-                  style={isActive ? { stroke: 'url(#nav-gradient)' } : {}}
-                />
-                <span className="text-[11px] font-medium">{item.label}</span>
-              </>
-            )}
-          </NavLink>
-        ))}
+        <div className="flex items-center gap-1">
+          {rightItems.map((item) => (
+            <NavLink
+              key={item.path}
+              to={item.path}
+              className={({ isActive }) =>
+                `flex flex-col items-center gap-1 px-4 py-1 rounded-lg transition-all duration-300 ${
+                  isActive ? 'text-foreground -translate-y-1' : 'text-muted-foreground'
+                }`
+              }
+            >
+              {({ isActive }) => (
+                <>
+                  <item.icon
+                    className={`w-[22px] h-[22px] transition-all ${isActive ? 'gradient-text' : ''}`}
+                    style={isActive ? { stroke: 'url(#nav-gradient)' } : {}}
+                  />
+                  <span className="text-[11px] font-medium">{item.label}</span>
+                </>
+              )}
+            </NavLink>
+          ))}
+        </div>
 
         {/* SVG gradient */}
         <svg width="0" height="0" className="absolute">
           <defs>
             <linearGradient id="nav-gradient" x1="0%" y1="0%" x2="0%" y2="100%">
-              <stop offset="0%" stopColor="hsl(270, 76%, 53%)" />
-              <stop offset="100%" stopColor="hsl(350, 100%, 71%)" />
+              <stop offset="0%" stopColor="hsl(var(--primary))" />
+              <stop offset="100%" stopColor="hsl(var(--accent))" />
             </linearGradient>
           </defs>
         </svg>
