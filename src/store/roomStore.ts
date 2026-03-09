@@ -148,7 +148,7 @@ export const useRoomStore = create<RoomState>((set, get) => ({
         id: room.id,
         host_id: room.host_id,
         room_name: room.room_name,
-        current_song: room.current_song as Song | null,
+        current_song: room.current_song as unknown as Song | null,
         is_playing: room.is_playing,
         playback_time: room.playback_time,
       },
