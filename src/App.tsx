@@ -18,6 +18,7 @@ import TrendingPage from "./pages/TrendingPage";
 import RadioPage from "./pages/RadioPage";
 import LibraryPage from "./pages/LibraryPage";
 import ProfilePage from "./pages/ProfilePage";
+import SettingsPage from "./pages/SettingsPage";
 import NotFound from "./pages/NotFound";
 import { useAuthStore } from "@/store/authStore";
 
