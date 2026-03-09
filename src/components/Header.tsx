@@ -44,6 +44,12 @@ export default function Header() {
           <button className="text-muted-foreground hover:text-foreground transition-all hover:scale-110">
             <Bell className="w-5 h-5" />
           </button>
+          <button
+            onClick={() => navigate('/settings')}
+            className={`text-muted-foreground hover:text-foreground transition-all hover:scale-110 ${location.pathname === '/settings' ? 'text-foreground' : ''}`}
+          >
+            <Settings className="w-5 h-5" />
+          </button>
           <div
             className="w-9 h-9 rounded-full flex items-center justify-center cursor-pointer border-2 border-border/50 overflow-hidden"
             style={!avatarUrl ? { background: 'var(--gradient-primary)' } : {}}
