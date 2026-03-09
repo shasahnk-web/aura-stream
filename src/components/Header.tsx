@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Search, Bell, User, LogIn } from 'lucide-react';
+import { Search, Bell, User, LogIn, Settings } from 'lucide-react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import kanakoLogo from '@/assets/kanako-logo.png';
 import AuthModal from './AuthModal';
@@ -43,6 +43,12 @@ export default function Header() {
           </button>
           <button className="text-muted-foreground hover:text-foreground transition-all hover:scale-110">
             <Bell className="w-5 h-5" />
+          </button>
+          <button
+            onClick={() => navigate('/settings')}
+            className={`text-muted-foreground hover:text-foreground transition-all hover:scale-110 ${location.pathname === '/settings' ? 'text-foreground' : ''}`}
+          >
+            <Settings className="w-5 h-5" />
           </button>
           <div
             className="w-9 h-9 rounded-full flex items-center justify-center cursor-pointer border-2 border-border/50 overflow-hidden"
