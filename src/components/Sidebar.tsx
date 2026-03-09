@@ -4,6 +4,8 @@ import { motion } from 'framer-motion';
 import kanakoLogo from '@/assets/kanako-logo.png';
 import { Send } from 'lucide-react';
 
+import { Users, Headphones } from 'lucide-react';
+
 const navItems = [
   { icon: Home, label: 'Home', path: '/' },
   { icon: Search, label: 'Search', path: '/search' },
@@ -14,6 +16,8 @@ const libraryItems = [
   { icon: Heart, label: 'Liked Songs', path: '/liked' },
   { icon: TrendingUp, label: 'Trending', path: '/trending' },
   { icon: Radio, label: 'Radio', path: '/radio' },
+  { icon: Headphones, label: 'Together', path: '/together' },
+  { icon: Users, label: 'Friends', path: '/friends' },
   { icon: Settings, label: 'Settings', path: '/settings' },
 ];
 
