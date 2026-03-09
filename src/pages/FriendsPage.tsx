@@ -112,7 +112,7 @@ export default function FriendsPage() {
     
     setActivities(activityData.map(a => ({
       ...a,
-      song_data: a.song_data as Song | null,
+      song_data: a.song_data as unknown as Song | null,
       profile: profileMap.get(a.user_id),
     })));
   };

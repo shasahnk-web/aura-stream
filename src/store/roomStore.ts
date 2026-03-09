@@ -313,7 +313,7 @@ export const useRoomStore = create<RoomState>((set, get) => ({
         set({
           members: (membersRes.data || []) as RoomMember[],
           messages: (messagesRes.data || []) as RoomMessage[],
-          songRequests: (requestsRes.data || []) as SongRequest[],
+          songRequests: (requestsRes.data || []) as unknown as SongRequest[],
         });
       }
     });

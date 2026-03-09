@@ -46,7 +46,7 @@ export default function FriendsActivity() {
         user_id: a.user_id,
         name: profileMap.get(a.user_id)?.name || 'Unknown',
         avatar_url: profileMap.get(a.user_id)?.avatar_url || null,
-        song: a.song_data as Song | null,
+        song: a.song_data as unknown as Song | null,
       })).filter(a => a.song);
       
       setActivities(activityList.slice(0, 5));
