@@ -1,16 +1,34 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { fetchPlaylist, FEATURED_PLAYLISTS } from '@/services/musicApi';
 import PlaylistCardRef from '@/components/PlaylistCardRef';
 import SongCard from '@/components/SongCard';
 import SpotifyRecommendations from '@/components/SpotifyRecommendations';
 import NewReleases from '@/components/NewReleases';
+import AiDjSection from '@/components/AiDjSection';
 import { usePlayerStore, Song } from '@/store/playerStore';
 import { motion } from 'framer-motion';
 import { useAutoplay } from '@/hooks/useAutoplay';
+import { useAuthStore } from '@/store/authStore';
+import { supabase } from '@/integrations/supabase/client';
 
 export default function HomePage() {
   useAutoplay();
+  const { user } = useAuthStore();
+  const [userName, setUserName] = useState('');
+
+  useEffect(() => {
+    if (user) {
+      supabase.from('profiles').select('name').eq('id', user.id).single().then(({ data }) => {
+        if (data?.name) setUserName(data.name);
+      });
+    } else {
+      // Fallback to localStorage
+      const stored = localStorage.getItem('kanako-user-name');
+      if (stored) setUserName(stored);
+    }
+  }, [user]);
+
   const playlistQueries = FEATURED_PLAYLISTS.map(p => ({
     ...p,
     query: useQuery({
@@ -24,9 +42,11 @@ export default function HomePage() {
 
   const greeting = () => {
     const h = new Date().getHours();
-    if (h < 12) return 'Good Morning';
-    if (h < 17) return 'Good Afternoon';
-    return 'Good Evening';
+    const name = userName || 'there';
+    if (h >= 5 && h < 12) return `Morning ${name}`;
+    if (h >= 12 && h < 17) return `Afternoon ${name}`;
+    if (h >= 17 && h < 21) return `Evening ${name}`;
+    return `Night ${name}`;
   };
 
   return (
@@ -40,6 +60,7 @@ export default function HomePage() {
       >
         <h1 className="text-2xl md:text-3xl font-bold font-display text-foreground">{greeting()}</h1>
         <p className="text-muted-foreground text-sm mt-1">Discover your next favorite track</p>
+      </motion.div>
       </motion.div>
 
       {/* Recently Played - Horizontal scroll */}
