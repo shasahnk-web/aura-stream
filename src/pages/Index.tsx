@@ -61,7 +61,6 @@ export default function HomePage() {
         <h1 className="text-2xl md:text-3xl font-bold font-display text-foreground">{greeting()}</h1>
         <p className="text-muted-foreground text-sm mt-1">Discover your next favorite track</p>
       </motion.div>
-      </motion.div>
 
       {/* Recently Played - Horizontal scroll */}
       {loadedPlaylists.length > 0 && (
