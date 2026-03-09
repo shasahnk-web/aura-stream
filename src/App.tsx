@@ -19,6 +19,9 @@ import RadioPage from "./pages/RadioPage";
 import LibraryPage from "./pages/LibraryPage";
 import ProfilePage from "./pages/ProfilePage";
 import SettingsPage from "./pages/SettingsPage";
+import TogetherPage from "./pages/TogetherPage";
+import RoomPage from "./pages/RoomPage";
+import FriendsPage from "./pages/FriendsPage";
 import NotFound from "./pages/NotFound";
 import { useAuthStore } from "@/store/authStore";
 
