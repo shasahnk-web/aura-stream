@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Search, Bell, User, LogIn } from 'lucide-react';
+import { Search, Bell, User, LogIn, Settings } from 'lucide-react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import kanakoLogo from '@/assets/kanako-logo.png';
 import AuthModal from './AuthModal';
