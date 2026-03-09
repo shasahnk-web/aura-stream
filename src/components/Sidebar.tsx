@@ -1,4 +1,4 @@
-import { Home, Search, Library, Heart, ListMusic, Radio, TrendingUp, Music } from 'lucide-react';
+import { Home, Search, Library, Heart, ListMusic, Radio, TrendingUp, Music, Settings } from 'lucide-react';
 import { NavLink } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import kanakoLogo from '@/assets/kanako-logo.png';
@@ -14,6 +14,7 @@ const libraryItems = [
   { icon: Heart, label: 'Liked Songs', path: '/liked' },
   { icon: TrendingUp, label: 'Trending', path: '/trending' },
   { icon: Radio, label: 'Radio', path: '/radio' },
+  { icon: Settings, label: 'Settings', path: '/settings' },
 ];
 
 export default function Sidebar() {
