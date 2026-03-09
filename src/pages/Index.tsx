@@ -85,6 +85,9 @@ export default function HomePage() {
         </section>
       )}
 
+      {/* AI DJ Section */}
+      <AiDjSection />
+
       {/* Spotify Recommendations */}
       <SpotifyRecommendations />
 
