@@ -45,7 +45,7 @@ const App = () => (
           <Sidebar />
           <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
             <Header />
-            <main className="flex-1 flex flex-col min-w-0 overflow-hidden">
+            <main className="flex-1 flex flex-col min-w-0 overflow-y-auto pb-32 md:pb-20">
               <Routes>
                 <Route path="/" element={<Index />} />
                 <Route path="/search" element={<SearchPage />} />

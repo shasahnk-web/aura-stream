@@ -114,9 +114,7 @@ export default function RoomPage() {
       setChatInput('');
     }
   };
-  
-  const handleTogglePlay = () => {
-    const newPlayingState = !isPlaying;
+  const newPlayingState = !isPlaying;
     setIsPlaying(newPlayingState);
     if (isHost) {
       updatePlayback(currentSong, newPlayingState, audioRef.current?.currentTime || 0);
@@ -125,6 +123,7 @@ export default function RoomPage() {
   
   const handleSeek = (time: number) => {
     if (audioRef.current) audioRef.current.currentTime = time;
+    setCurrentTime(time);
     if (isHost) {
       seekTo(time);
     }
@@ -133,21 +132,6 @@ export default function RoomPage() {
   const handleNextSong = () => {
     if (isHost) {
       nextSong();
-    }
-  };
-  
-  const handleSearch = async () => {
-    if (!searchQuery.trim()) return;
-    
-    setSearching(true);
-    try {
-      const results = await searchSongs(searchQuery);
-      setSearchResults(results);
-    } catch (error) {
-      console.error('Search failed:', error);
-      toast.error('Search failed');
-    } finally {
-      setSearching(false);
     }
   };
   
