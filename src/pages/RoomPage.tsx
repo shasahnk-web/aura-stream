@@ -1,11 +1,10 @@
 import { useEffect, useRef, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Copy, Users, Send, Music, Play, Pause, SkipForward, Check, X, Search, Crown, Wifi, WifiOff, Clock, ListMusic } from 'lucide-react';
+import { ArrowLeft, Copy, Users, Send, Music, Play, Pause, SkipForward, Check, X, Search } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Badge } from '@/components/ui/badge';
 import { useRoomStore, RoomMessage, SongRequest } from '@/store/roomStore';
 import { useAuthStore } from '@/store/authStore';
 import { usePlayerStore, Song } from '@/store/playerStore';
@@ -18,8 +17,7 @@ export default function RoomPage() {
   const { user } = useAuthStore();
   const { 
     currentRoom, members, messages, songRequests, isHost, userName,
-    joinRoom, leaveRoom, sendMessage, updatePlayback, requestSong, updateRequestStatus,
-    seekTo, nextSong, syncState, syncStatus, addToQueue, removeFromQueue, reorderQueue
+    joinRoom, leaveRoom, sendMessage, updatePlayback, requestSong, updateRequestStatus 
   } = useRoomStore();
   const { currentSong, isPlaying, setCurrentSong, setIsPlaying, playNext } = usePlayerStore();
   
@@ -58,35 +56,13 @@ export default function RoomPage() {
     setIsPlaying(currentRoom.is_playing);
   }, [currentRoom?.current_song, currentRoom?.is_playing, isHost]);
   
-  // Drift correction for non-hosts
-  useEffect(() => {
-    if (!currentRoom || isHost || !currentRoom.is_playing) return;
-    
-    const checkDrift = () => {
-      if (!audioRef.current || !currentRoom) return;
-      
-      const currentTime = audioRef.current.currentTime;
-      const expectedTime = currentRoom.playback_time + (Date.now() - (currentRoom.updated_at ? new Date(currentRoom.updated_at).getTime() : Date.now())) / 1000;
-      const drift = Math.abs(currentTime - expectedTime);
-      
-      if (drift > 2) { // More than 2 seconds drift
-        audioRef.current.currentTime = expectedTime;
-        set({ syncStatus: 'adjusting' });
-        setTimeout(() => set({ syncStatus: 'synced' }), 1000);
-      }
-    };
-    
-    const interval = setInterval(checkDrift, 5000);
-    return () => clearInterval(interval);
-  }, [currentRoom, isHost]);
-  
   // Host broadcasts playback state
   useEffect(() => {
     if (!isHost || !currentRoom) return;
     
     const interval = setInterval(() => {
-      updatePlayback(currentSong, isPlaying, audioRef.current?.currentTime || 0);
-    }, 2000); // More frequent updates
+      updatePlayback(currentSong, isPlaying, 0);
+    }, 5000);
     
     return () => clearInterval(interval);
   }, [isHost, currentSong, isPlaying]);
@@ -115,40 +91,12 @@ export default function RoomPage() {
     }
   };
   
-  const handleTogglePlay = () => {
-    const newPlayingState = !isPlaying;
-    setIsPlaying(newPlayingState);
-    if (isHost) {
-      updatePlayback(currentSong, newPlayingState, audioRef.current?.currentTime || 0);
-    }
-  };
-  
-  const handleSeek = (time: number) => {
-    if (audioRef.current) audioRef.current.currentTime = time;
-    if (isHost) {
-      seekTo(time);
-    }
-  };
-  
-  const handleNextSong = () => {
-    if (isHost) {
-      nextSong();
-    }
-  };
-  
   const handleSearch = async () => {
     if (!searchQuery.trim()) return;
-    
     setSearching(true);
-    try {
-      const results = await searchSongs(searchQuery);
-      setSearchResults(results);
-    } catch (error) {
-      console.error('Search failed:', error);
-      toast.error('Search failed');
-    } finally {
-      setSearching(false);
-    }
+    const results = await searchSongs(searchQuery);
+    setSearchResults(results);
+    setSearching(false);
   };
   
   const handleRequestSong = (song: Song) => {
@@ -165,10 +113,16 @@ export default function RoomPage() {
     updatePlayback(song, true, 0);
   };
   
+  const handleTogglePlay = () => {
+    setIsPlaying(!isPlaying);
+    if (isHost) {
+      updatePlayback(currentSong, !isPlaying, 0);
+    }
+  };
+  
   const handleAcceptRequest = (request: SongRequest) => {
     updateRequestStatus(request.id, 'accepted');
-    addToQueue(request.song_data);
-    toast.success('Song added to queue!');
+    handlePlaySong(request.song_data);
   };
   
   if (!currentRoom) {
@@ -197,18 +151,9 @@ export default function RoomPage() {
             </div>
           </div>
         </div>
-        <div className="flex items-center gap-3">
-          {/* Sync Status */}
-          <div className="flex items-center gap-1">
-            {syncStatus === 'synced' && <Wifi className="w-4 h-4 text-green-500" />}
-            {syncStatus === 'adjusting' && <Clock className="w-4 h-4 text-yellow-500" />}
-            {syncStatus === 'disconnected' && <WifiOff className="w-4 h-4 text-red-500" />}
-            <span className="text-xs text-muted-foreground capitalize">{syncStatus}</span>
-          </div>
-          <div className="flex items-center gap-2 text-sm text-muted-foreground">
-            <Users className="w-4 h-4" />
-            <span>{members.length}</span>
-          </div>
+        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+          <Users className="w-4 h-4" />
+          <span>{members.length}</span>
         </div>
       </div>
       
@@ -227,20 +172,13 @@ export default function RoomPage() {
                 <div className="flex-1 min-w-0">
                   <p className="font-semibold text-foreground truncate">{currentSong.name}</p>
                   <p className="text-sm text-muted-foreground truncate">{currentSong.artist}</p>
-                  <div className="flex items-center gap-2 mt-1">
-                    {isHost && <Badge variant="secondary" className="text-xs"><Crown className="w-3 h-3 mr-1" />Host</Badge>}
-                    <Badge variant="outline" className="text-xs">
-                      {syncStatus === 'synced' ? '🟢' : syncStatus === 'adjusting' ? '🟡' : '🔴'} 
-                      {syncStatus}
-                    </Badge>
-                  </div>
                 </div>
                 {isHost && (
                   <div className="flex items-center gap-2">
                     <Button variant="ghost" size="icon" onClick={handleTogglePlay}>
                       {isPlaying ? <Pause className="w-5 h-5" /> : <Play className="w-5 h-5" />}
                     </Button>
-                    <Button variant="ghost" size="icon" onClick={handleNextSong}>
+                    <Button variant="ghost" size="icon" onClick={playNext}>
                       <SkipForward className="w-5 h-5" />
                     </Button>
                   </div>
@@ -301,103 +239,58 @@ export default function RoomPage() {
           </div>
         </div>
         
-        {/* Sidebar - Queue & Requests */}
+        {/* Sidebar - Song Requests (desktop) */}
         <div className="hidden md:flex flex-col w-80 border-l border-border/50">
-          {/* Queue */}
-          <div className="p-4 border-b border-border/50">
-            <h3 className="font-semibold text-foreground flex items-center gap-2">
-              <ListMusic className="w-4 h-4" />
-              Queue ({currentRoom?.queue?.length || 0})
-            </h3>
+          <div className="p-4 border-b border-border/50 flex items-center justify-between">
+            <h3 className="font-semibold text-foreground">Song Requests</h3>
+            {!isHost && (
+              <Button variant="outline" size="sm" onClick={() => setShowSearch(true)}>
+                <Search className="w-4 h-4 mr-1" /> Request
+              </Button>
+            )}
           </div>
           
-          <ScrollArea className="flex-1">
-            {currentRoom?.queue && currentRoom.queue.length > 0 ? (
-              <div className="p-4 space-y-3">
-                {currentRoom.queue.map((song, index) => (
-                  <div key={index} className="flex items-center gap-3 p-2 rounded-lg hover:bg-secondary/50">
-                    <div className="w-8 h-8 rounded-lg bg-primary/20 flex items-center justify-center text-xs font-semibold text-primary">
-                      {index + 1}
-                    </div>
-                    <img src={song.image} alt={song.name} className="w-10 h-10 rounded-lg object-cover" />
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium truncate">{song.name}</p>
-                      <p className="text-xs text-muted-foreground truncate">{song.artist}</p>
+          <ScrollArea className="flex-1 p-4">
+            {songRequests.filter(r => r.status === 'pending').length === 0 ? (
+              <p className="text-sm text-muted-foreground text-center py-8">No pending requests</p>
+            ) : (
+              <div className="space-y-3">
+                {songRequests.filter(r => r.status === 'pending').map((request) => (
+                  <div key={request.id} className="p-3 rounded-xl glass">
+                    <div className="flex items-center gap-3">
+                      <img 
+                        src={request.song_data.image} 
+                        alt={request.song_data.name}
+                        className="w-10 h-10 rounded-lg object-cover"
+                      />
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium text-foreground truncate">{request.song_data.name}</p>
+                        <p className="text-xs text-muted-foreground truncate">by {request.requested_by}</p>
+                      </div>
                     </div>
                     {isHost && (
-                      <Button 
-                        variant="ghost" 
-                        size="sm"
-                        onClick={() => removeFromQueue(index)}
-                        className="text-muted-foreground hover:text-destructive"
-                      >
-                        <X className="w-3 h-3" />
-                      </Button>
+                      <div className="flex gap-2 mt-2">
+                        <Button 
+                          size="sm" 
+                          className="flex-1"
+                          onClick={() => handleAcceptRequest(request)}
+                        >
+                          <Check className="w-3 h-3 mr-1" /> Play
+                        </Button>
+                        <Button 
+                          size="sm" 
+                          variant="outline"
+                          onClick={() => updateRequestStatus(request.id, 'rejected')}
+                        >
+                          <X className="w-3 h-3" />
+                        </Button>
+                      </div>
                     )}
                   </div>
                 ))}
               </div>
-            ) : (
-              <div className="p-4 text-center text-muted-foreground">
-                <ListMusic className="w-8 h-8 mx-auto mb-2 opacity-50" />
-                <p className="text-sm">Queue is empty</p>
-              </div>
             )}
           </ScrollArea>
-          
-          {/* Song Requests */}
-          <div className="border-t border-border/50">
-            <div className="p-4 border-b border-border/50 flex items-center justify-between">
-              <h3 className="font-semibold text-foreground">Song Requests</h3>
-              {!isHost && (
-                <Button variant="outline" size="sm" onClick={() => setShowSearch(true)}>
-                  <Search className="w-4 h-4 mr-1" /> Request
-                </Button>
-              )}
-            </div>
-            
-            <ScrollArea className="h-64 p-4">
-              {songRequests.filter(r => r.status === 'pending').length === 0 ? (
-                <p className="text-sm text-muted-foreground text-center py-8">No pending requests</p>
-              ) : (
-                <div className="space-y-3">
-                  {songRequests.filter(r => r.status === 'pending').map((request) => (
-                    <div key={request.id} className="p-3 rounded-xl glass">
-                      <div className="flex items-center gap-3">
-                        <img 
-                          src={request.song_data.image} 
-                          alt={request.song_data.name}
-                          className="w-10 h-10 rounded-lg object-cover"
-                        />
-                        <div className="flex-1 min-w-0">
-                          <p className="text-sm font-medium text-foreground truncate">{request.song_data.name}</p>
-                          <p className="text-xs text-muted-foreground truncate">by {request.requested_by}</p>
-                        </div>
-                      </div>
-                      {isHost && (
-                        <div className="flex gap-2 mt-2">
-                          <Button 
-                            size="sm" 
-                            className="flex-1"
-                            onClick={() => handleAcceptRequest(request)}
-                          >
-                            <Check className="w-3 h-3 mr-1" /> Play
-                          </Button>
-                          <Button 
-                            size="sm" 
-                            variant="outline"
-                            onClick={() => updateRequestStatus(request.id, 'rejected')}
-                          >
-                            <X className="w-3 h-3" />
-                          </Button>
-                        </div>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              )}
-            </ScrollArea>
-          </div>
         </div>
       </div>
       

@@ -66,8 +66,7 @@
     font-family: 'Poppins', 'Segoe UI', system-ui, sans-serif;
     background: var(--gradient-bg);
     background-attachment: fixed;
-    overflow-y: auto;
-    overflow-x: hidden;
+    overflow: hidden;
   }
 }
 

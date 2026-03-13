@@ -14,7 +14,7 @@ const rightItems = [
 export default function MobileNav() {
   return (
     <nav
-      className="fixed bottom-0 left-0 right-0 z-[1000] md:hidden glass border-t border-border/50"
+      className="fixed bottom-0 left-0 right-0 z-[60] md:hidden glass border-t border-border/50"
       style={{ backdropFilter: 'blur(12px)' }}
     >
       <div className="flex items-center justify-between h-16 px-2">
@@ -47,17 +47,17 @@ export default function MobileNav() {
         <NavLink
           to="/together"
           className={({ isActive }) =>
-            `absolute -top-7 left-1/2 transform -translate-x-1/2 flex flex-col items-center justify-center w-14 h-14 rounded-full shadow-lg border-4 border-background transition-all duration-300 hover:scale-105 ${
+            `flex flex-col items-center justify-center w-16 h-16 -mt-6 rounded-full shadow-lg border-4 border-background transition-all ${
               isActive 
-                ? 'bg-gradient-to-br from-primary to-accent text-primary-foreground scale-110' 
-                : 'bg-foreground text-primary hover:bg-foreground/90'
+                ? 'bg-gradient-to-br from-primary to-accent text-primary-foreground' 
+                : 'bg-foreground text-primary'
             }`
           }
         >
           {({ isActive }) => (
             <>
-              <Headphones className={`w-5 h-5 ${isActive ? 'text-primary-foreground' : 'text-primary'}`} />
-              <span className={`text-[8px] font-semibold mt-0.5 ${isActive ? 'text-primary-foreground' : 'text-primary'}`}>Together</span>
+              <Headphones className={`w-6 h-6 ${isActive ? 'text-primary-foreground' : 'text-primary'}`} />
+              <span className={`text-[9px] font-semibold mt-0.5 ${isActive ? 'text-primary-foreground' : 'text-primary'}`}>Together</span>
             </>
           )}
         </NavLink>
