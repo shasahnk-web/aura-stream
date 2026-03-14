@@ -138,7 +138,7 @@ export default function FriendsPage() {
       .single();
     
     if (!targetUser) {
-      toast.error('User not found');
+      toast.error('Friend not found');
       setLoading(false);
       return;
     }

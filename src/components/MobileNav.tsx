@@ -14,10 +14,10 @@ const rightItems = [
 export default function MobileNav() {
   return (
     <nav
-      className="fixed bottom-0 left-0 right-0 z-[60] md:hidden glass border-t border-border/50"
-      style={{ backdropFilter: 'blur(12px)' }}
+      className="fixed bottom-0 left-0 right-0 z-[50] md:hidden glass border-t border-border/50"
+      style={{ backdropFilter: 'blur(12px)', paddingBottom: 'env(safe-area-inset-bottom)' }}
     >
-      <div className="flex items-center justify-between h-16 px-2">
+      <div className="relative flex items-center justify-between h-16 px-2">
         {/* Left items */}
         <div className="flex items-center gap-1">
           {leftItems.map((item) => (
@@ -47,8 +47,8 @@ export default function MobileNav() {
         <NavLink
           to="/together"
           className={({ isActive }) =>
-            `flex flex-col items-center justify-center w-16 h-16 -mt-6 rounded-full shadow-lg border-4 border-background transition-all ${
-              isActive 
+            `absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 flex flex-col items-center justify-center w-16 h-16 rounded-full shadow-lg border-4 border-background transition-all ${
+              isActive
                 ? 'bg-gradient-to-br from-primary to-accent text-primary-foreground' 
                 : 'bg-foreground text-primary'
             }`

@@ -49,12 +49,13 @@ export default function RoomPage() {
   // Sync playback for non-hosts
   useEffect(() => {
     if (!currentRoom || isHost) return;
-    
+
     if (currentRoom.current_song) {
       setCurrentSong(currentRoom.current_song);
     }
     setIsPlaying(currentRoom.is_playing);
-  }, [currentRoom?.current_song, currentRoom?.is_playing, isHost]);
+    setCurrentTime(currentRoom.playback_time);
+  }, [currentRoom?.current_song, currentRoom?.is_playing, currentRoom?.playback_time, isHost]);
   
   // Host broadcasts playback state
   useEffect(() => {
@@ -110,13 +111,14 @@ export default function RoomPage() {
   const handlePlaySong = (song: Song) => {
     setCurrentSong(song);
     setIsPlaying(true);
+    setCurrentTime(0);
     updatePlayback(song, true, 0);
   };
-  
+
   const handleTogglePlay = () => {
     setIsPlaying(!isPlaying);
-    if (isHost) {
-      updatePlayback(currentSong, !isPlaying, 0);
+    if (isHost && currentSong) {
+      updatePlayback(currentSong, !isPlaying, currentTime);
     }
   };
   
@@ -163,27 +165,58 @@ export default function RoomPage() {
           {/* Now Playing */}
           <div className="p-4 border-b border-border/50">
             {currentSong ? (
-              <div className="flex items-center gap-4">
-                <img 
-                  src={currentSong.image} 
-                  alt={currentSong.name}
-                  className="w-16 h-16 rounded-xl object-cover shadow-lg"
-                />
-                <div className="flex-1 min-w-0">
-                  <p className="font-semibold text-foreground truncate">{currentSong.name}</p>
-                  <p className="text-sm text-muted-foreground truncate">{currentSong.artist}</p>
-                </div>
-                {isHost && (
-                  <div className="flex items-center gap-2">
-                    <Button variant="ghost" size="icon" onClick={handleTogglePlay}>
-                      {isPlaying ? <Pause className="w-5 h-5" /> : <Play className="w-5 h-5" />}
-                    </Button>
-                    <Button variant="ghost" size="icon" onClick={playNext}>
-                      <SkipForward className="w-5 h-5" />
-                    </Button>
+              <>
+                <div className="flex items-center gap-4">
+                  <img 
+                    src={currentSong.image} 
+                    alt={currentSong.name}
+                    className="w-16 h-16 rounded-xl object-cover shadow-lg"
+                  />
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center justify-between gap-4">
+                      <div className="min-w-0">
+                        <p className="font-semibold text-foreground truncate">{currentSong.name}</p>
+                        <p className="text-sm text-muted-foreground truncate">{currentSong.artist}</p>
+                      </div>
+                      <span className="text-xs font-medium px-2 py-1 rounded-full bg-emerald-500/20 text-emerald-200">
+                        {Math.abs(currentTime - (currentRoom?.playback_time ?? 0)) < 1 ? '🟢 Synced' : '🟡 Adjusting'}
+                      </span>
+                    </div>
                   </div>
-                )}
-              </div>
+                  {isHost && (
+                    <div className="flex items-center gap-2">
+                      <Button variant="ghost" size="icon" onClick={handleTogglePlay}>
+                        {isPlaying ? <Pause className="w-5 h-5" /> : <Play className="w-5 h-5" />}
+                      </Button>
+                      <Button variant="ghost" size="icon" onClick={playNext}>
+                        <SkipForward className="w-5 h-5" />
+                      </Button>
+                    </div>
+                  )}
+                </div>
+
+                <div className="mt-4">
+                  <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">Participants</h3>
+                  <div className="flex flex-wrap gap-2">
+                    {members.map((member) => (
+                      <div
+                        key={member.user_id}
+                        className="flex items-center gap-2 px-3 py-1 rounded-full bg-secondary/40"
+                      >
+                        <span className="w-6 h-6 rounded-full bg-primary/20 flex items-center justify-center text-xs font-semibold text-primary">
+                          {member.user_name.charAt(0).toUpperCase()}
+                        </span>
+                        <span className="text-xs font-medium truncate max-w-[120px]">{member.user_name}</span>
+                        {member.user_id === currentRoom?.host_id && (
+                          <span className="text-[10px] px-2 py-0.5 rounded-full bg-amber-400/20 text-amber-200">
+                            Host
+                          </span>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </>
             ) : (
               <div className="text-center py-4 text-muted-foreground">
                 <Music className="w-8 h-8 mx-auto mb-2 opacity-50" />

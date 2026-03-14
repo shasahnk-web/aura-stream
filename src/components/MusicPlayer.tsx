@@ -1,5 +1,6 @@
 import { useRef, useEffect, useCallback, useState } from 'react';
 import { usePlayerStore, useLikedStore } from '@/store/playerStore';
+import { useRoomStore } from '@/store/roomStore';
 import {
   Play, Pause, SkipBack, SkipForward, Shuffle, Repeat, Repeat1,
   Volume2, Volume1, VolumeX, Heart, ListMusic, Music2, Download, Maximize2
@@ -24,10 +25,58 @@ export default function MusicPlayer() {
   const crossfadeTimerRef = useRef<ReturnType<typeof setTimeout>>();
   const {
     currentSong, isPlaying, volume, currentTime, duration,
-    shuffle, repeat, togglePlay, setCurrentTime, setDuration,
+    shuffle, repeat, togglePlay, setCurrentSong, setCurrentTime, setDuration,
     setIsPlaying, playNext, playPrev, toggleShuffle, toggleRepeat, setVolume
   } = usePlayerStore();
   const { isLiked, toggleLike } = useLikedStore();
+  const { isHost, currentRoom, updatePlayback } = useRoomStore();
+
+  const broadcastRef = useRef({ songId: '', isPlaying: false, time: 0 });
+
+  // Host: periodically broadcast playback state (and on significant changes)
+  useEffect(() => {
+    if (!isHost || !currentSong) return;
+
+    const shouldBroadcast = () => {
+      const prev = broadcastRef.current;
+      if (prev.songId !== currentSong.id) return true;
+      if (prev.isPlaying !== isPlaying) return true;
+      if (Math.abs(prev.time - currentTime) > 2) return true;
+      return false;
+    };
+
+    if (!shouldBroadcast()) return;
+
+    const timer = setTimeout(() => {
+      updatePlayback(currentSong, isPlaying, currentTime);
+      broadcastRef.current = {
+        songId: currentSong.id,
+        isPlaying,
+        time: currentTime,
+      };
+    }, 400);
+
+    return () => clearTimeout(timer);
+  }, [isHost, currentSong?.id, isPlaying, currentTime, updatePlayback]);
+
+  // Listener: sync to room state
+  useEffect(() => {
+    if (!currentRoom || isHost) return;
+
+    if (currentRoom.current_song && currentRoom.current_song.id !== currentSong?.id) {
+      setCurrentSong(currentRoom.current_song);
+    }
+
+    setIsPlaying(currentRoom.is_playing);
+
+    if (audioRef.current) {
+      const drift = Math.abs(audioRef.current.currentTime - currentRoom.playback_time);
+      if (drift > 1) {
+        audioRef.current.currentTime = currentRoom.playback_time;
+        setCurrentTime(currentRoom.playback_time);
+      }
+    }
+  }, [currentRoom?.current_song?.id, currentRoom?.is_playing, currentRoom?.playback_time]);
 
   const [playbackRate, setPlaybackRate] = useState(1);
   const [crossfadeDuration, setCrossfadeDuration] = useState(0);
@@ -113,6 +162,10 @@ export default function MusicPlayer() {
     const t = parseFloat(e.target.value);
     if (audioRef.current) audioRef.current.currentTime = t;
     setCurrentTime(t);
+
+    if (isHost && currentSong) {
+      updatePlayback(currentSong, isPlaying, t);
+    }
   };
 
   const handleNowPlayingSeek = (time: number) => {
@@ -160,8 +213,8 @@ export default function MusicPlayer() {
           animate={{ y: 0, opacity: 1 }}
           exit={{ y: 100, opacity: 0 }}
           transition={{ type: 'spring', damping: 25, stiffness: 300 }}
-          className="fixed bottom-16 md:bottom-0 left-0 right-0 z-[55] glass border-t border-border/50"
-          style={{ backdropFilter: 'blur(12px)' }}
+          className="fixed bottom-[80px] left-0 right-0 z-[70] glass border-t border-border/50"
+          style={{ backdropFilter: 'blur(12px)', paddingBottom: 'env(safe-area-inset-bottom)' }}
         >
           {/* Progress bar on top like reference */}
           <div className="absolute top-0 left-0 right-0 h-[3px] bg-white/10">

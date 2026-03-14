@@ -39,6 +39,7 @@ interface RoomState {
   messages: RoomMessage[];
   songRequests: SongRequest[];
   isHost: boolean;
+  userId: string | null;
   userName: string;
   channel: RealtimeChannel | null;
   
@@ -72,6 +73,7 @@ export const useRoomStore = create<RoomState>((set, get) => ({
   messages: [],
   songRequests: [],
   isHost: false,
+  userId: null,
   userName: '',
   channel: null,
   
@@ -111,6 +113,7 @@ export const useRoomStore = create<RoomState>((set, get) => ({
         playback_time: 0,
       },
       isHost: true,
+      userId,
       userName,
     });
     
@@ -153,6 +156,7 @@ export const useRoomStore = create<RoomState>((set, get) => ({
         playback_time: room.playback_time,
       },
       isHost: room.host_id === userId,
+      userId,
       userName,
     });
     
@@ -161,26 +165,48 @@ export const useRoomStore = create<RoomState>((set, get) => ({
   },
   
   leaveRoom: async (userId) => {
-    const { currentRoom, isHost } = get();
+    const { currentRoom, isHost, channel } = get();
     if (!currentRoom) return;
-    
-    get().unsubscribe();
-    
+
+    // Remove member record
     await supabase.from('room_members').delete()
       .eq('room_id', currentRoom.id)
       .eq('user_id', userId);
-    
-    // If host leaves, delete room
+
+    // If host leaves, promote new host (if any) instead of destroying the room
     if (isHost) {
-      await supabase.from('rooms').delete().eq('id', currentRoom.id);
+      const { data: remainingMembers } = await supabase
+        .from('room_members')
+        .select('*')
+        .eq('room_id', currentRoom.id)
+        .order('joined_at', { ascending: true });
+
+      if (remainingMembers && remainingMembers.length > 0) {
+        const newHost = remainingMembers[0];
+        await supabase.from('rooms').update({ host_id: newHost.user_id }).eq('id', currentRoom.id);
+
+        // Notify remaining members about host change
+        channel?.send({
+          type: 'broadcast',
+          event: 'host_change',
+          payload: { newHostId: newHost.user_id },
+        });
+      } else {
+        // No members left; remove room
+        await supabase.from('rooms').delete().eq('id', currentRoom.id);
+      }
     }
-    
+
+    // Unsubscribe from real-time updates
+    get().unsubscribe();
+
     set({
       currentRoom: null,
       members: [],
       messages: [],
       songRequests: [],
       isHost: false,
+      userId: null,
     });
   },
   
@@ -246,7 +272,7 @@ export const useRoomStore = create<RoomState>((set, get) => ({
     channel.on('broadcast', { event: 'playback' }, ({ payload }) => {
       const { currentRoom, isHost } = get();
       if (!currentRoom || isHost) return;
-      
+
       set({
         currentRoom: {
           ...currentRoom,
@@ -256,7 +282,45 @@ export const useRoomStore = create<RoomState>((set, get) => ({
         }
       });
     });
-    
+
+    // Subscribe to host change notifications
+    channel.on('broadcast', { event: 'host_change' }, ({ payload }) => {
+      const { currentRoom, userId } = get();
+      if (!currentRoom) return;
+      set({
+        currentRoom: {
+          ...currentRoom,
+          host_id: payload.newHostId,
+        },
+        isHost: userId ? payload.newHostId === userId : false,
+      });
+    });
+
+    // Subscribe to rooms table updates (fallback for playback/host state)
+    channel.on('postgres_changes', {
+      event: 'UPDATE',
+      schema: 'public',
+      table: 'rooms',
+      filter: `id=eq.${roomId}`,
+    }, (payload) => {
+      const room = payload.new as Room;
+      const { userId, currentRoom } = get();
+      if (!currentRoom || currentRoom.id !== room.id) return;
+
+      const isHost = userId ? room.host_id === userId : false;
+
+      set({
+        currentRoom: {
+          ...currentRoom,
+          host_id: room.host_id,
+          current_song: room.current_song as unknown as Song | null,
+          is_playing: room.is_playing,
+          playback_time: room.playback_time,
+        },
+        isHost,
+      });
+    });
+
     // Subscribe to presence (online members)
     channel.on('presence', { event: 'sync' }, () => {
       // Refresh members from database
