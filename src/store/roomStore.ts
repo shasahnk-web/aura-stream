@@ -46,7 +46,8 @@ interface RoomState {
   channel: RealtimeChannel | null;
   
   setUserName: (name: string) => void;
-  createRoom: (userId: string, userName: string) => Promise<string | null>;
+  createRoom: (userId: string, userName: string) => Promise<{ id?: string; error?: string }>;
+  createRoomDebug: (userId: string, userName: string) => Promise<{ id?: string; error?: string }>;
   joinRoom: (roomId: string, userId: string, userName: string) => Promise<boolean>;
   leaveRoom: (userId: string) => Promise<void>;
   
@@ -120,7 +121,7 @@ export const useRoomStore = create<RoomState>((set, get) => ({
 
       if (attempts >= maxAttempts) {
         console.error('Failed to generate unique room ID');
-        return null;
+        return { error: 'Failed to generate unique room ID' };
       }
 
       const { error } = await supabase.from('rooms').insert({
@@ -133,7 +134,7 @@ export const useRoomStore = create<RoomState>((set, get) => ({
 
       if (error) {
         console.error('Failed to create room:', error);
-        return null;
+        return { error: error.message || 'Failed to create room' };
       }
 
       // Join as member
@@ -160,10 +161,10 @@ export const useRoomStore = create<RoomState>((set, get) => ({
       });
 
       get().subscribeToRoom(roomId);
-      return roomId;
-    } catch (error) {
+      return { id: roomId };
+    } catch (error: any) {
       console.error('Unexpected error creating room:', error);
-      return null;
+      return { error: error?.message || 'Unknown error' };
     }
   },
   

@@ -15,6 +15,12 @@ export default function SongCard({ song, songs, index = 0, showNumber = true }: 
   const liked = isLiked(song.id);
 
   const handlePlay = () => {
+    if (!song.url) {
+      // Some songs may not have a playable URL from the API
+      window.alert('Unable to play this track (no playable URL).');
+      return;
+    }
+
     if (isCurrentSong) {
       togglePlay();
     } else {

@@ -46,13 +46,13 @@ export default function TogetherPage() {
     }
     
     setLoading(true);
-    const roomId = await createRoom(user.id, name.trim());
+    const result = await createRoom(user.id, name.trim());
     setLoading(false);
-    
-    if (roomId) {
-      navigate(`/room/${roomId}`);
+
+    if (result?.id) {
+      navigate(`/room/${result.id}`);
     } else {
-      toast.error('Failed to create room');
+      toast.error(result?.error || 'Failed to create room');
     }
   };
   
@@ -91,7 +91,7 @@ export default function TogetherPage() {
   };
   
   return (
-    <div className="flex-1 overflow-y-auto scrollbar-thin pb-36 md:pb-28 px-4 md:px-6 pt-8">
+    <div className="flex-1 overflow-y-auto scrollbar-thin pb-52 md:pb-44 px-4 md:px-6 pt-8">
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}

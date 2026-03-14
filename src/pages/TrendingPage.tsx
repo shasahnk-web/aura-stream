@@ -12,6 +12,15 @@ const TRENDING_PLAYLISTS = [
 
 export default function TrendingPage() {
   const { setCurrentSong, setQueue } = usePlayerStore();
+  const handlePlaySong = (song: any, songs: any[]) => {
+    if (!song.url) {
+      // eslint-disable-next-line no-console
+      console.warn('Song has no playable URL:', song);
+      return;
+    }
+    setQueue(songs);
+    setCurrentSong(song);
+  };
 
   const mainQuery = useQuery({
     queryKey: ['playlist', TRENDING_PLAYLISTS[0].id],
@@ -38,7 +47,7 @@ export default function TrendingPage() {
   };
 
   return (
-    <div className="flex-1 overflow-y-auto scrollbar-thin pb-36 md:pb-28">
+    <div className="flex-1 overflow-y-auto scrollbar-thin pb-52 md:pb-44">
       {/* Hero */}
       <div className="relative px-4 md:px-8 pt-6 pb-6">
         <div className="absolute inset-0 h-[250px] bg-gradient-to-b from-primary/20 to-transparent" />
@@ -96,9 +105,25 @@ export default function TrendingPage() {
       {/* Trending Today */}
       {trendingToday.length > 0 && (
         <div className="px-4 md:px-8 mb-8">
-          <div className="flex items-center gap-2 mb-4">
-            <Flame className="w-5 h-5 text-accent" />
-            <h2 className="text-xl font-bold font-display text-foreground">Trending Today</h2>
+          <div className="flex items-center justify-between gap-2 mb-4">
+            <div className="flex items-center gap-2">
+              <Flame className="w-5 h-5 text-accent" />
+              <h2 className="text-xl font-bold font-display text-foreground">Trending Today</h2>
+            </div>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => handlePlayAll(trendingToday)}
+                className="px-4 py-2 rounded-full bg-primary text-primary-foreground font-semibold text-xs hover:opacity-90 transition-opacity flex items-center gap-1"
+              >
+                <Play className="w-4 h-4" /> Play All
+              </button>
+              <button
+                onClick={() => handleShuffle(trendingToday)}
+                className="px-4 py-2 rounded-full glass text-foreground font-semibold text-xs hover:bg-secondary/40 transition-colors flex items-center gap-1"
+              >
+                <Shuffle className="w-4 h-4" /> Shuffle
+              </button>
+            </div>
           </div>
           <div className="glass rounded-xl p-2">
             {trendingToday.map((song, i) => (
