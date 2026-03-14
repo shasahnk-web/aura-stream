@@ -23,6 +23,7 @@ import TogetherPage from "./pages/TogetherPage";
 import RoomPage from "./pages/RoomPage";
 import FriendsPage from "./pages/FriendsPage";
 import NotFound from "./pages/NotFound";
+import ErrorBoundary from "@/components/ErrorBoundary";
 import { useAuthStore } from "@/store/authStore";
 
 const queryClient = new QueryClient();
@@ -46,22 +47,24 @@ const App = () => (
           <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
             <Header />
             <main className="flex-1 flex flex-col min-w-0 overflow-hidden">
-              <Routes>
-                <Route path="/" element={<Index />} />
-                <Route path="/search" element={<SearchPage />} />
-                <Route path="/playlist/:id" element={<PlaylistPage />} />
-                <Route path="/liked" element={<LikedSongsPage />} />
-                <Route path="/artist/:id" element={<ArtistPage />} />
-                <Route path="/library" element={<LibraryPage />} />
-                <Route path="/trending" element={<TrendingPage />} />
-                <Route path="/radio" element={<RadioPage />} />
-                <Route path="/profile" element={<ProfilePage />} />
-                <Route path="/settings" element={<SettingsPage />} />
-                <Route path="/together" element={<TogetherPage />} />
-                <Route path="/room/:id" element={<RoomPage />} />
-                <Route path="/friends" element={<FriendsPage />} />
-                <Route path="*" element={<NotFound />} />
-              </Routes>
+              <ErrorBoundary>
+                <Routes>
+                  <Route path="/" element={<Index />} />
+                  <Route path="/search" element={<SearchPage />} />
+                  <Route path="/playlist/:id" element={<PlaylistPage />} />
+                  <Route path="/liked" element={<LikedSongsPage />} />
+                  <Route path="/artist/:id" element={<ArtistPage />} />
+                  <Route path="/library" element={<LibraryPage />} />
+                  <Route path="/trending" element={<TrendingPage />} />
+                  <Route path="/radio" element={<RadioPage />} />
+                  <Route path="/profile" element={<ProfilePage />} />
+                  <Route path="/settings" element={<SettingsPage />} />
+                  <Route path="/together" element={<TogetherPage />} />
+                  <Route path="/room/:id" element={<RoomPage />} />
+                  <Route path="/friends" element={<FriendsPage />} />
+                  <Route path="*" element={<NotFound />} />
+                </Routes>
+              </ErrorBoundary>
             </main>
           </div>
           <MusicPlayer />

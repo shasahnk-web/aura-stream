@@ -20,8 +20,12 @@ export default function TogetherPage() {
   const [loading, setLoading] = useState(false);
   
   useEffect(() => {
-    const stored = localStorage.getItem('kanako-user-name');
-    if (stored) setName(stored);
+    try {
+      const stored = localStorage.getItem('kanako-user-name');
+      if (stored) setName(stored);
+    } catch {
+      // localStorage may not be available in some browsers/private modes
+    }
   }, []);
   
   const handleNameChange = (value: string) => {
@@ -68,14 +72,21 @@ export default function TogetherPage() {
       return;
     }
     
+    // Validate room ID format
+    const normalizedRoomId = roomIdInput.trim().toUpperCase();
+    if (!/^ROOM-\d{4}$/.test(normalizedRoomId)) {
+      toast.error('Invalid room ID format. Use format: ROOM-1234');
+      return;
+    }
+    
     setLoading(true);
-    const success = await joinRoom(roomIdInput.trim().toUpperCase(), user.id, name.trim());
+    const success = await joinRoom(normalizedRoomId, user.id, name.trim());
     setLoading(false);
     
     if (success) {
-      navigate(`/room/${roomIdInput.trim().toUpperCase()}`);
+      navigate(`/room/${normalizedRoomId}`);
     } else {
-      toast.error('Room not found');
+      toast.error('Room not found or unable to join');
     }
   };
   

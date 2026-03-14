@@ -17,9 +17,10 @@ export default function RoomPage() {
   const { user } = useAuthStore();
   const { 
     currentRoom, members, messages, songRequests, isHost, userName,
-    joinRoom, leaveRoom, sendMessage, updatePlayback, requestSong, updateRequestStatus 
+    joinRoom, leaveRoom, sendMessage, updatePlayback, requestSong, updateRequestStatus,
+    setPartyMode
   } = useRoomStore();
-  const { currentSong, isPlaying, setCurrentSong, setIsPlaying, playNext } = usePlayerStore();
+  const { currentSong, isPlaying, setCurrentSong, setIsPlaying, playNext, currentTime, setCurrentTime } = usePlayerStore();
   
   const [chatInput, setChatInput] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
@@ -157,11 +158,26 @@ export default function RoomPage() {
           <Users className="w-4 h-4" />
           <span>{members.length}</span>
         </div>
-      </div>
-      
-      <div className="flex-1 flex flex-col md:flex-row overflow-hidden">
-        {/* Main area - Now Playing + Chat */}
-        <div className="flex-1 flex flex-col overflow-hidden">
+          {isHost && (
+            <div className="flex items-center gap-2">
+              <span className="text-xs font-medium text-muted-foreground">Party Mode</span>
+              <button
+                onClick={() => setPartyMode(!currentRoom?.party_mode)}
+                className={`px-3 py-1 rounded-full text-[11px] transition ${
+                  currentRoom?.party_mode ? 'bg-emerald-500/20 text-emerald-200' : 'bg-muted-foreground/10 text-muted-foreground'
+                }`}
+              >
+                {currentRoom?.party_mode ? 'ON' : 'OFF'}
+              </button>
+            </div>
+          )}
+
+        <div className="flex-1 flex flex-col overflow-hidden relative">
+          {currentRoom?.party_mode && (
+            <div className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center">
+              <div className="w-full h-full bg-gradient-to-br from-purple-500/5 via-pink-500/5 to-indigo-500/5 animate-pulse" />
+            </div>
+          )}
           {/* Now Playing */}
           <div className="p-4 border-b border-border/50">
             {currentSong ? (

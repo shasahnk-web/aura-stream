@@ -12,6 +12,7 @@ import SleepTimer from './SleepTimer';
 import PlaybackControls from './PlaybackControls';
 import AudioVisualizer from './AudioVisualizer';
 import NowPlayingView from './NowPlayingView';
+import useBeatDetector from '@/hooks/useBeatDetector';
 
 function formatTime(s: number) {
   const m = Math.floor(s / 60);
@@ -29,7 +30,7 @@ export default function MusicPlayer() {
     setIsPlaying, playNext, playPrev, toggleShuffle, toggleRepeat, setVolume
   } = usePlayerStore();
   const { isLiked, toggleLike } = useLikedStore();
-  const { isHost, currentRoom, updatePlayback } = useRoomStore();
+  const { isHost, currentRoom, updatePlayback, emitBeatDrop, setPartyMode } = useRoomStore();
 
   const broadcastRef = useRef({ songId: '', isPlaying: false, time: 0 });
 
@@ -58,6 +59,33 @@ export default function MusicPlayer() {
 
     return () => clearTimeout(timer);
   }, [isHost, currentSong?.id, isPlaying, currentTime, updatePlayback]);
+
+  // Party mode / beat drops
+  const [partyEffectActive, setPartyEffectActive] = useState(false);
+  const [lastDropTime, setLastDropTime] = useState<number | null>(null);
+
+  useEffect(() => {
+    if (!currentRoom?.last_drop_at) return;
+    setLastDropTime(currentRoom.last_drop_at);
+    setPartyEffectActive(true);
+
+    const timeout = setTimeout(() => setPartyEffectActive(false), 1200);
+    return () => clearTimeout(timeout);
+  }, [currentRoom?.last_drop_at]);
+
+  const onBeatDrop = useCallback(
+    (time: number) => {
+      if (isHost && currentRoom?.party_mode) {
+        emitBeatDrop(time);
+      }
+    },
+    [emitBeatDrop, isHost, currentRoom?.party_mode]
+  );
+
+  useBeatDetector(audioRef.current, Boolean(currentRoom?.party_mode), onBeatDrop, {
+    sensitivity: 1.5,
+    minIntervalMs: 1000,
+  });
 
   // Listener: sync to room state
   useEffect(() => {
