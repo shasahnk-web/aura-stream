@@ -160,6 +160,8 @@ export type Database = {
           host_id: string
           id: string
           is_playing: boolean
+          last_drop_at: number | null
+          party_mode: boolean
           playback_time: number
           room_name: string
           updated_at: string
@@ -170,6 +172,8 @@ export type Database = {
           host_id: string
           id: string
           is_playing?: boolean
+          last_drop_at?: number | null
+          party_mode?: boolean
           playback_time?: number
           room_name?: string
           updated_at?: string
@@ -180,6 +184,8 @@ export type Database = {
           host_id?: string
           id?: string
           is_playing?: boolean
+          last_drop_at?: number | null
+          party_mode?: boolean
           playback_time?: number
           room_name?: string
           updated_at?: string
