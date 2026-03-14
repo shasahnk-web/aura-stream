@@ -103,13 +103,19 @@ export const useRoomStore = create<RoomState>((set, get) => ({
         attempts++;
 
         // Check if room ID already exists
-        const { data: existing } = await supabase
+        const { data: existing, error: checkError } = await supabase
           .from('rooms')
           .select('id')
           .eq('id', roomId)
-          .single();
+          .limit(1);
 
-        if (!existing) break;
+        if (checkError) {
+          console.error('Error checking room existence:', checkError);
+          // If there's an error, assume room doesn't exist and continue
+          if (!existing || existing.length === 0) break;
+        } else if (!existing || existing.length === 0) {
+          break;
+        }
       } while (attempts < maxAttempts);
 
       if (attempts >= maxAttempts) {
@@ -171,21 +177,19 @@ export const useRoomStore = create<RoomState>((set, get) => ({
         .from('rooms')
         .select('*')
         .eq('id', normalizedRoomId)
-        .single();
+        .limit(1);
 
       if (roomError) {
         console.error('Room lookup error:', roomError);
-        if (roomError.code === 'PGRST116') {
-          // No rows returned
-          return false;
-        }
-        throw roomError;
+        return false;
       }
 
-      if (!room) {
+      if (!room || room.length === 0) {
         console.error('Room not found:', normalizedRoomId);
         return false;
       }
+
+      const roomData = room[0];
 
       // Join as member
       const { error: joinError } = await supabase.from('room_members').upsert({
@@ -201,16 +205,16 @@ export const useRoomStore = create<RoomState>((set, get) => ({
 
       set({
         currentRoom: {
-          id: room.id,
-          host_id: room.host_id,
-          room_name: room.room_name,
-          current_song: room.current_song as unknown as Song | null,
-          is_playing: room.is_playing,
-          playback_time: room.playback_time,
-          party_mode: room.party_mode ?? false,
-          last_drop_at: room.last_drop_at ?? null,
+          id: roomData.id,
+          host_id: roomData.host_id,
+          room_name: roomData.room_name,
+          current_song: roomData.current_song as unknown as Song | null,
+          is_playing: roomData.is_playing,
+          playback_time: roomData.playback_time,
+          party_mode: roomData.party_mode ?? false,
+          last_drop_at: roomData.last_drop_at ?? null,
         },
-        isHost: room.host_id === userId,
+        isHost: roomData.host_id === userId,
         userId,
         userName,
       });
