@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Copy, Users, Send, Music, Play, Pause, SkipForward, Check, X, Search } from 'lucide-react';
+import { ArrowLeft, Copy, Users, Send, Music, Play, Pause, SkipForward, Check, X, Search, Power } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -18,7 +18,7 @@ export default function RoomPage() {
   const { 
     currentRoom, members, messages, songRequests, isHost, userName,
     joinRoom, leaveRoom, sendMessage, updatePlayback, requestSong, updateRequestStatus,
-    setPartyMode
+    setPartyMode, endRoom
   } = useRoomStore();
   const { currentSong, isPlaying, setCurrentSong, setIsPlaying, playNext, currentTime, setCurrentTime } = usePlayerStore();
   
@@ -36,16 +36,22 @@ export default function RoomPage() {
       navigate('/together');
       return;
     }
-    
+
     if (!currentRoom || currentRoom.id !== roomId) {
       const storedName = localStorage.getItem('kanako-user-name') || 'Guest';
-      joinRoom(roomId, user.id, storedName);
+      (async () => {
+        const result = await joinRoom(roomId, user.id, storedName);
+        if (!result.success) {
+          toast.error(result.error || 'Room not found or unable to join');
+          navigate('/together');
+        }
+      })();
     }
-    
+
     return () => {
       // Don't leave on unmount, only on explicit leave
     };
-  }, [roomId, user]);
+  }, [roomId, user, currentRoom, joinRoom, navigate]);
   
   // Sync playback for non-hosts
   useEffect(() => {
@@ -56,7 +62,7 @@ export default function RoomPage() {
     }
     setIsPlaying(currentRoom.is_playing);
     setCurrentTime(currentRoom.playback_time);
-  }, [currentRoom?.current_song, currentRoom?.is_playing, currentRoom?.playback_time, isHost]);
+  }, [currentRoom, isHost, setCurrentSong, setIsPlaying, setCurrentTime]);
   
   // Host broadcasts playback state
   useEffect(() => {
@@ -67,7 +73,7 @@ export default function RoomPage() {
     }, 5000);
     
     return () => clearInterval(interval);
-  }, [isHost, currentSong, isPlaying]);
+  }, [isHost, currentRoom, currentSong, isPlaying, updatePlayback]);
   
   // Auto-scroll chat
   useEffect(() => {
@@ -79,6 +85,17 @@ export default function RoomPage() {
       await leaveRoom(user.id);
     }
     navigate('/together');
+  };
+  
+  const handleEndRoom = async () => {
+    if (!roomId) return;
+    const result = await endRoom(roomId);
+    if (result.success) {
+      toast.success('Room ended');
+      navigate('/together');
+    } else {
+      toast.error(result.error || 'Failed to end room');
+    }
   };
   
   const handleCopyRoomId = () => {
@@ -144,42 +161,46 @@ export default function RoomPage() {
           <Button variant="ghost" size="icon" onClick={handleLeave}>
             <ArrowLeft className="w-5 h-5" />
           </Button>
-          <div>
+          <div className="flex-1">
             <h1 className="font-semibold text-foreground">{currentRoom.room_name}</h1>
-            <div className="flex items-center gap-2 text-xs text-muted-foreground">
-              <span className="font-mono">{roomId}</span>
-              <button onClick={handleCopyRoomId} className="hover:text-foreground">
-                <Copy className="w-3 h-3" />
-              </button>
-            </div>
+            <p className="text-xs text-muted-foreground">{members.length} {members.length === 1 ? 'member' : 'members'}</p>
           </div>
         </div>
-        <div className="flex items-center gap-2 text-sm text-muted-foreground">
-          <Users className="w-4 h-4" />
-          <span>{members.length}</span>
-        </div>
-          {isHost && (
-            <div className="flex items-center gap-2">
-              <span className="text-xs font-medium text-muted-foreground">Party Mode</span>
-              <button
-                onClick={() => setPartyMode(!currentRoom?.party_mode)}
-                className={`px-3 py-1 rounded-full text-[11px] transition ${
-                  currentRoom?.party_mode ? 'bg-emerald-500/20 text-emerald-200' : 'bg-muted-foreground/10 text-muted-foreground'
-                }`}
-              >
-                {currentRoom?.party_mode ? 'ON' : 'OFF'}
-              </button>
-            </div>
-          )}
+        {isHost && (
+          <div className="flex items-center gap-2 ml-4">
+            <span className="text-xs font-medium text-muted-foreground">Party</span>
+            <button
+              onClick={() => setPartyMode(!currentRoom?.party_mode)}
+              className={`px-3 py-1 rounded-full text-[11px] transition ${
+                currentRoom?.party_mode ? 'bg-emerald-500/20 text-emerald-200' : 'bg-muted-foreground/10 text-muted-foreground'
+              }`}
+            >
+              {currentRoom?.party_mode ? 'ON' : 'OFF'}
+            </button>
+            <Button 
+              variant="ghost" 
+              size="sm" 
+              onClick={handleEndRoom}
+              className="text-red-400 hover:text-red-300 hover:bg-red-500/10"
+            >
+              <Power className="w-4 h-4 mr-1" /> End
+            </Button>
+          </div>
+        )}
+      </div>
 
-        <div className="flex-1 flex flex-col overflow-hidden relative">
-          {currentRoom?.party_mode && (
-            <div className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center">
-              <div className="w-full h-full bg-gradient-to-br from-purple-500/5 via-pink-500/5 to-indigo-500/5 animate-pulse" />
-            </div>
-          )}
+      <div className="flex-1 flex flex-col overflow-hidden relative">
+      {currentRoom?.party_mode && (
+        <div className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center">
+          <div className="w-full h-full bg-gradient-to-br from-purple-500/5 via-pink-500/5 to-indigo-500/5 animate-pulse" />
+        </div>
+      )}
+      
+      <div className="flex-1 flex gap-0 min-w-0 overflow-hidden">
+        {/* Main Content Area */}
+        <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
           {/* Now Playing */}
-          <div className="p-4 border-b border-border/50">
+          <div className="p-4 border-b border-border/50 shrink-0">
             {currentSong ? (
               <>
                 <div className="flex items-center gap-4">
@@ -194,13 +215,13 @@ export default function RoomPage() {
                         <p className="font-semibold text-foreground truncate">{currentSong.name}</p>
                         <p className="text-sm text-muted-foreground truncate">{currentSong.artist}</p>
                       </div>
-                      <span className="text-xs font-medium px-2 py-1 rounded-full bg-emerald-500/20 text-emerald-200">
+                      <span className="text-xs font-medium px-2 py-1 rounded-full bg-emerald-500/20 text-emerald-200 shrink-0">
                         {Math.abs(currentTime - (currentRoom?.playback_time ?? 0)) < 1 ? '🟢 Synced' : '🟡 Adjusting'}
                       </span>
                     </div>
                   </div>
                   {isHost && (
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 shrink-0">
                       <Button variant="ghost" size="icon" onClick={handleTogglePlay}>
                         {isPlaying ? <Pause className="w-5 h-5" /> : <Play className="w-5 h-5" />}
                       </Button>
@@ -251,7 +272,7 @@ export default function RoomPage() {
             )}
           </div>
           
-          {/* Chat */}
+          {/* Chat Area */}
           <ScrollArea className="flex-1 p-4">
             <div className="space-y-3">
               {messages.map((msg) => (
@@ -272,7 +293,7 @@ export default function RoomPage() {
           </ScrollArea>
           
           {/* Chat Input */}
-          <div className="p-4 border-t border-border/50">
+          <div className="p-4 border-t border-border/50 shrink-0">
             <div className="flex gap-2">
               <Input
                 placeholder="Type a message..."
@@ -288,13 +309,13 @@ export default function RoomPage() {
           </div>
         </div>
         
-        {/* Sidebar - Song Requests (desktop) */}
+        {/* Sidebar - Song Requests (desktop only) */}
         <div className="hidden md:flex flex-col w-80 border-l border-border/50">
-          <div className="p-4 border-b border-border/50 flex items-center justify-between">
-            <h3 className="font-semibold text-foreground">Song Requests</h3>
+          <div className="p-4 border-b border-border/50 flex items-center justify-between shrink-0">
+            <h3 className="font-semibold text-foreground">Requests</h3>
             {!isHost && (
               <Button variant="outline" size="sm" onClick={() => setShowSearch(true)}>
-                <Search className="w-4 h-4 mr-1" /> Request
+                <Search className="w-4 h-4 mr-1" /> Add
               </Button>
             )}
           </div>
@@ -341,6 +362,7 @@ export default function RoomPage() {
             )}
           </ScrollArea>
         </div>
+      </div>
       </div>
       
       {/* Search Modal */}

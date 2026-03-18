@@ -48,9 +48,8 @@ interface RoomState {
   setUserName: (name: string) => void;
   createRoom: (userId: string, userName: string) => Promise<{ id?: string; error?: string }>;
   createRoomDebug: (userId: string, userName: string) => Promise<{ id?: string; error?: string }>;
-  joinRoom: (roomId: string, userId: string, userName: string) => Promise<boolean>;
-  leaveRoom: (userId: string) => Promise<void>;
-  
+  joinRoom: (roomId: string, userId: string, userName: string) => Promise<{ success: boolean; error?: string }>;
+  leaveRoom: (userId: string) => Promise<void>;  endRoom: (roomId: string) => Promise<{ success: boolean; error?: string }>;  
   // Host controls
   updatePlayback: (song: Song | null, isPlaying: boolean, time: number) => Promise<void>;
   setPartyMode: (enabled: boolean) => Promise<void>;
@@ -162,9 +161,10 @@ export const useRoomStore = create<RoomState>((set, get) => ({
 
       get().subscribeToRoom(roomId);
       return { id: roomId };
-    } catch (error: any) {
-      console.error('Unexpected error creating room:', error);
-      return { error: error?.message || 'Unknown error' };
+    } catch (error: unknown) {
+      const err = error as Error;
+      console.error('Unexpected error creating room:', err);
+      return { error: err?.message || 'Unknown error' };
     }
   },
   
@@ -173,21 +173,54 @@ export const useRoomStore = create<RoomState>((set, get) => ({
       // Normalize room ID (ensure uppercase format)
       const normalizedRoomId = roomId.toUpperCase().trim();
 
-      // Check if room exists
-      const { data: room, error: roomError } = await supabase
-        .from('rooms')
-        .select('*')
-        .eq('id', normalizedRoomId)
-        .limit(1);
-
-      if (roomError) {
-        console.error('Room lookup error:', roomError);
-        return false;
+      // Validate room ID format early
+      if (!/^ROOM-\d{4}$/.test(normalizedRoomId)) {
+        const errMsg = `Invalid room ID format: ${roomId}`;
+        console.error(errMsg);
+        return { success: false, error: errMsg };
       }
 
-      if (!room || room.length === 0) {
-        console.error('Room not found:', normalizedRoomId);
-        return false;
+      // Check if already in this room
+      const { currentRoom } = get();
+      if (currentRoom && currentRoom.id === normalizedRoomId) {
+        // Already in this room, just return success
+        return { success: true };
+      }
+
+      // Check if room exists with retries (in case of replication delay)
+      let room = null;
+      let attempts = 0;
+      const maxAttempts = 3;
+      const delayMs = 500;
+
+      while (attempts < maxAttempts && !room) {
+        const { data: roomData, error: roomError } = await supabase
+          .from('rooms')
+          .select('*')
+          .eq('id', normalizedRoomId)
+          .limit(1);
+
+        if (roomError) {
+          console.error('Room lookup error:', roomError);
+          if (attempts === maxAttempts - 1) {
+            return { success: false, error: roomError.message };
+          }
+        } else if (roomData && roomData.length > 0) {
+          room = roomData;
+          break;
+        }
+
+        attempts++;
+        if (attempts < maxAttempts) {
+          // Wait before retrying
+          await new Promise(resolve => setTimeout(resolve, delayMs));
+        }
+      }
+
+      if (!room) {
+        const errMsg = `Room not found: ${normalizedRoomId}`;
+        console.error(errMsg);
+        return { success: false, error: errMsg };
       }
 
       const roomData = room[0];
@@ -201,7 +234,7 @@ export const useRoomStore = create<RoomState>((set, get) => ({
 
       if (joinError) {
         console.error('Failed to join room:', joinError);
-        return false;
+        return { success: false, error: joinError.message };
       }
 
       set({
@@ -221,10 +254,11 @@ export const useRoomStore = create<RoomState>((set, get) => ({
       });
 
       get().subscribeToRoom(normalizedRoomId);
-      return true;
-    } catch (error) {
-      console.error('Unexpected error joining room:', error);
-      return false;
+      return { success: true };
+    } catch (error: unknown) {
+      const errorMsg = error instanceof Error ? error.message : String(error);
+      console.error('Unexpected error joining room:', errorMsg);
+      return { success: false, error: errorMsg || 'Unknown error' };
     }
   },
   
@@ -273,6 +307,47 @@ export const useRoomStore = create<RoomState>((set, get) => ({
       userId: null,
     });
   },
+
+  endRoom: async (roomId) => {
+    try {
+      // Only host can end room
+      const { isHost, channel } = get();
+      if (!isHost) {
+        return { success: false, error: 'Only host can end room' };
+      }
+
+      // Delete all related records
+      await Promise.all([
+        supabase.from('room_members').delete().eq('room_id', roomId),
+        supabase.from('room_messages').delete().eq('room_id', roomId),
+        supabase.from('song_requests').delete().eq('room_id', roomId),
+        supabase.from('rooms').delete().eq('id', roomId),
+      ]);
+
+      // Notify members before unsubscribing
+      channel?.send({
+        type: 'broadcast',
+        event: 'room_ended',
+        payload: { roomId },
+      });
+
+      // Clean up state
+      get().unsubscribe();
+      set({
+        currentRoom: null,
+        members: [],
+        messages: [],
+        songRequests: [],
+        isHost: false,
+      });
+
+      return { success: true };
+    } catch (error: unknown) {
+      const errorMsg = error instanceof Error ? error.message : String(error);
+      console.error('Error ending room:', errorMsg);
+      return { success: false, error: errorMsg || 'Failed to end room' };
+    }
+  },
   
   updatePlayback: async (song, isPlaying, time) => {
     const { currentRoom, isHost, channel } = get();
@@ -280,7 +355,7 @@ export const useRoomStore = create<RoomState>((set, get) => ({
 
     // Update database
     await supabase.from('rooms').update({
-      current_song: song as any,
+      current_song: song as unknown,
       is_playing: isPlaying,
       playback_time: time,
       updated_at: new Date().toISOString(),
@@ -350,7 +425,7 @@ export const useRoomStore = create<RoomState>((set, get) => ({
     
     await supabase.from('song_requests').insert({
       room_id: currentRoom.id,
-      song_data: song as any,
+      song_data: song as unknown,
       requested_by: userName,
     });
   },
@@ -426,7 +501,7 @@ export const useRoomStore = create<RoomState>((set, get) => ({
         schema: 'public',
         table: 'rooms',
         filter: `id=eq.${roomId}`,
-      }, (payload) => {
+      }, (payload: Record<string, unknown>) => {
         const room = payload.new as Room;
         const { userId, currentRoom } = get();
         if (!currentRoom || currentRoom.id !== room.id) return;
@@ -457,21 +532,20 @@ export const useRoomStore = create<RoomState>((set, get) => ({
       });
 
       // Subscribe to new messages
-      channel
-        .on('postgres_changes', {
-          event: 'INSERT',
-          schema: 'public',
-          table: 'room_messages',
-          filter: `room_id=eq.${roomId}`,
-        }, (payload) => {
-          set({ messages: [...get().messages, payload.new as RoomMessage] });
-        })
+      channel.on('postgres_changes', {
+        event: 'INSERT',
+        schema: 'public',
+        table: 'room_messages',
+        filter: `room_id=eq.${roomId}`,
+      }, (payload: { new: unknown }) => {
+        set({ messages: [...get().messages, payload.new as RoomMessage] });
+      })
         .on('postgres_changes', {
           event: 'INSERT',
           schema: 'public',
           table: 'song_requests',
           filter: `room_id=eq.${roomId}`,
-        }, (payload) => {
+        }, (payload: { new: unknown }) => {
           set({ songRequests: [...get().songRequests, payload.new as SongRequest] });
         })
         .on('postgres_changes', {
@@ -479,10 +553,10 @@ export const useRoomStore = create<RoomState>((set, get) => ({
           schema: 'public',
           table: 'song_requests',
           filter: `room_id=eq.${roomId}`,
-        }, (payload) => {
+        }, (payload: { new: unknown }) => {
           set({
             songRequests: get().songRequests.map(r => 
-              r.id === payload.new.id ? { ...r, status: payload.new.status } : r
+              r.id === (payload.new as SongRequest).id ? { ...r, status: (payload.new as SongRequest).status } : r
             )
           });
         });

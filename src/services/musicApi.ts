@@ -28,45 +28,49 @@ function decodeHtml(html: string): string {
   return txt.value;
 }
 
-function extractImage(img: any): string {
+function extractImage(img: Record<string, unknown> | string | undefined): string {
   if (!img) return '';
   if (typeof img === 'string') return img;
   if (Array.isArray(img)) {
-    return img[2]?.url || img[2]?.link || img[1]?.url || img[1]?.link || img[0]?.url || img[0]?.link || '';
+    return (img[2] as Record<string, unknown>)?.url || (img[2] as Record<string, unknown>)?.link || (img[1] as Record<string, unknown>)?.url || (img[1] as Record<string, unknown>)?.link || (img[0] as Record<string, unknown>)?.url || (img[0] as Record<string, unknown>)?.link || '';
   }
   return '';
 }
 
-function extractArtist(s: any): string {
-  if (s.artists?.primary) {
-    return s.artists.primary.map((a: any) => a.name).join(', ');
+function extractArtist(s: Record<string, unknown>): string {
+  if ((s.artists as Record<string, unknown>)?.primary) {
+    return ((s.artists as Record<string, unknown>).primary as Array<{name: string}>).map((a) => a.name).join(', ');
   }
-  if (s.primaryArtists) return decodeHtml(s.primaryArtists);
+  if (s.primaryArtists) return decodeHtml(s.primaryArtists as string);
   if (s.subtitle) {
-    const parts = s.subtitle.split(' - ');
+    const parts = (s.subtitle as string).split(' - ');
     if (parts.length > 0) return decodeHtml(parts[0]);
   }
-  if (s.more_info?.artistMap?.primary_artists) {
-    return s.more_info.artistMap.primary_artists.map((a: any) => a.name).join(', ');
+  if ((s.more_info as Record<string, unknown>)?.artistMap) {
+    const artistMap = (s.more_info as Record<string, unknown>).artistMap as Record<string, unknown>;
+    if (artistMap.primary_artists) {
+      return (artistMap.primary_artists as Array<{name: string}>).map((a) => a.name).join(', ');
+    }
   }
   return 'Unknown Artist';
 }
 
-function extractUrl(s: any): string {
+function extractUrl(s: Record<string, unknown>): string {
   if (s.downloadUrl) {
     if (Array.isArray(s.downloadUrl)) {
-      return s.downloadUrl[4]?.url || s.downloadUrl[3]?.url || s.downloadUrl[2]?.url ||
-             s.downloadUrl[4]?.link || s.downloadUrl[3]?.link || s.downloadUrl[2]?.link ||
-             s.downloadUrl[1]?.url || s.downloadUrl[0]?.url ||
-             s.downloadUrl[1]?.link || s.downloadUrl[0]?.link || '';
+      const urls = s.downloadUrl as Array<Record<string, unknown>>;
+      return (urls[4]?.url as string) || (urls[3]?.url as string) || (urls[2]?.url as string) ||
+             (urls[4]?.link as string) || (urls[3]?.link as string) || (urls[2]?.link as string) ||
+             (urls[1]?.url as string) || (urls[0]?.url as string) ||
+             (urls[1]?.link as string) || (urls[0]?.link as string) || '';
     }
     if (typeof s.downloadUrl === 'string') return s.downloadUrl;
   }
-  if (s.media_preview_url) return s.media_preview_url;
+  if (s.media_preview_url) return s.media_preview_url as string;
   return '';
 }
 
-function mapSong(s: any): Song {
+function mapSong(s: Record<string, unknown>): Song {
   return {
     id: s.id || String(Math.random()),
     name: decodeHtml(s.name || s.song || s.title || 'Unknown'),
@@ -104,7 +108,7 @@ export async function searchSongs(query: string): Promise<Song[]> {
   }
 }
 
-export async function fetchHomepage(): Promise<any> {
+export async function fetchHomepage(): Promise<Record<string, unknown>> {
   try {
     const data = await edgeFetch({ action: 'jiosaavn-playlist', id: '1134543272' });
     return data.data || data;

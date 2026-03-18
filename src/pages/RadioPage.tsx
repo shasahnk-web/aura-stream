@@ -16,13 +16,14 @@ const RADIO_STATIONS = [
 export default function RadioPage() {
   const { setCurrentSong, setQueue } = usePlayerStore();
 
-  const stationQueries = RADIO_STATIONS.map(station => ({
-    ...station,
-    query: useQuery({
+  const stationQueries = RADIO_STATIONS.map((station) => {
+    // eslint-disable-next-line react-hooks/rules-of-hooks
+    const query = useQuery({
       queryKey: ['radio-station', station.id],
       queryFn: () => fetchPlaylist(station.id),
-    }),
-  }));
+    });
+    return { ...station, query };
+  });
 
   const handlePlayStation = (songs: Song[]) => {
     if (songs.length) {

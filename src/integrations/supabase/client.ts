@@ -19,7 +19,7 @@ function getSafeStorage(): Storage | undefined {
 
 export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
   auth: {
-    storage: getSafeStorage() as any,
+    storage: getSafeStorage() as unknown,
     persistSession: true,
     autoRefreshToken: true,
   }

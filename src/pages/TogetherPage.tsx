@@ -80,13 +80,13 @@ export default function TogetherPage() {
     }
     
     setLoading(true);
-    const success = await joinRoom(normalizedRoomId, user.id, name.trim());
+    const result = await joinRoom(normalizedRoomId, user.id, name.trim());
     setLoading(false);
     
-    if (success) {
+    if (result.success) {
       navigate(`/room/${normalizedRoomId}`);
     } else {
-      toast.error('Room not found or unable to join');
+      toast.error(result.error || 'Room not found or unable to join');
     }
   };
   

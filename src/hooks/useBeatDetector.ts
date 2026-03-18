@@ -25,7 +25,8 @@ export default function useBeatDetector(
     const sensitivity = options?.sensitivity ?? 1.6;
     const minIntervalMs = options?.minIntervalMs ?? 1200;
 
-    const ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
+    const AudioContextClass = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
+    const ctx = new AudioContextClass();
     audioContextRef.current = ctx;
 
     const analyser = ctx.createAnalyser();
