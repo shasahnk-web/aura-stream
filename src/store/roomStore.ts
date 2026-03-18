@@ -412,8 +412,18 @@ export const useRoomStore = create<RoomState>((set, get) => ({
   },
   
   sendMessage: async (message) => {
-    const { currentRoom, userName } = get();
+    const { currentRoom, userName, messages } = get();
     if (!currentRoom || !message.trim()) return;
+    
+    const newMessage: RoomMessage = {
+      id: crypto.randomUUID(),
+      user_name: userName,
+      message: message.trim(),
+      created_at: new Date().toISOString(),
+    };
+    
+    // Add locally immediately for instant feedback
+    set({ messages: [...messages, newMessage] });
     
     await supabase.from('room_messages').insert({
       room_id: currentRoom.id,
@@ -423,8 +433,19 @@ export const useRoomStore = create<RoomState>((set, get) => ({
   },
   
   requestSong: async (song) => {
-    const { currentRoom, userName } = get();
+    const { currentRoom, userName, songRequests } = get();
     if (!currentRoom) return;
+    
+    const newRequest: SongRequest = {
+      id: crypto.randomUUID(),
+      song_data: song,
+      requested_by: userName,
+      status: 'pending',
+      created_at: new Date().toISOString(),
+    };
+    
+    // Add locally immediately for instant feedback
+    set({ songRequests: [...songRequests, newRequest] });
     
     await supabase.from('song_requests').insert({
       room_id: currentRoom.id,

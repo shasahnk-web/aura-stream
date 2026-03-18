@@ -88,7 +88,7 @@ export default function TrendingPage() {
       {/* Top 50 */}
       <div className="px-4 md:px-8 mb-8">
         <div className="flex items-center gap-2 mb-4">
-          <TrendingUp className="w-5 h-5 text-primary" />
+          <div className="w-5 h-5 flex items-center justify-center text-primary">🔥</div>
           <h2 className="text-xl font-bold font-display text-foreground">India Superhits Top 50</h2>
         </div>
         {mainQuery.isLoading ? (

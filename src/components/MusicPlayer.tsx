@@ -237,7 +237,8 @@ export default function MusicPlayer() {
       />
       <audio ref={crossfadeAudioRef} crossOrigin="anonymous" />
       <AnimatePresence>
-        <motion.div
+        {currentSong && (
+          <motion.div
           initial={{ y: 100, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
           exit={{ y: 100, opacity: 0 }}
@@ -371,6 +372,7 @@ export default function MusicPlayer() {
             </div>
           </div>
         </motion.div>
+        )}
       </AnimatePresence>
       <QueueDrawer open={queueOpen} onOpenChange={setQueueOpen} />
       <LyricsPanel open={lyricsOpen} onOpenChange={setLyricsOpen} />
