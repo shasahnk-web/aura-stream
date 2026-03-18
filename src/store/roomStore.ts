@@ -570,7 +570,11 @@ export const useRoomStore = create<RoomState>((set, get) => ({
         table: 'room_messages',
         filter: `room_id=eq.${roomId}`,
       }, (payload: { new: unknown }) => {
-        set((state) => ({ messages: [...state.messages, payload.new as RoomMessage] }));
+        const newMsg = payload.new as RoomMessage;
+        set((state) => {
+          if (state.messages.some((m) => m.id === newMsg.id)) return state;
+          return { messages: [...state.messages, newMsg] };
+        });
       })
         .on('postgres_changes', {
           event: 'INSERT',

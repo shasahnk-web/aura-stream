@@ -100,12 +100,12 @@ export default function MusicPlayer() {
 
     if (audioRef.current) {
       const drift = Math.abs(audioRef.current.currentTime - currentRoom.playback_time);
-      if (drift > 1) {
+      if (drift > 1.5) {
         audioRef.current.currentTime = currentRoom.playback_time;
         setCurrentTime(currentRoom.playback_time);
       }
     }
-  }, [currentRoom?.current_song?.id, currentRoom?.is_playing, currentRoom?.playback_time]);
+  }, [currentRoom?.current_song?.id, currentRoom?.is_playing, currentRoom?.playback_time, isHost, currentSong?.id, setCurrentSong, setCurrentTime, setIsPlaying]);
 
   const [playbackRate, setPlaybackRate] = useState(1);
   const [crossfadeDuration, setCrossfadeDuration] = useState(0);
@@ -170,8 +170,18 @@ export default function MusicPlayer() {
   }, [crossfadeDuration, duration, volume]);
 
   const onTimeUpdate = useCallback(() => {
-    if (audioRef.current) setCurrentTime(audioRef.current.currentTime);
-  }, [setCurrentTime]);
+    if (!audioRef.current) return;
+    const current = audioRef.current.currentTime;
+    setCurrentTime(current);
+
+    if (isHost && currentSong) {
+      // Keep room playback state in sync with host time at least every 1s
+      const shouldSync = Math.abs(current - (currentRoom?.playback_time ?? 0)) > 1.2;
+      if (shouldSync) {
+        updatePlayback(currentSong, isPlaying, current);
+      }
+    }
+  }, [setCurrentTime, isHost, currentSong, isPlaying, updatePlayback, currentRoom?.playback_time]);
 
   const onLoadedMetadata = useCallback(() => {
     if (audioRef.current) setDuration(audioRef.current.duration);
