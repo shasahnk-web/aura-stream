@@ -243,7 +243,7 @@ export default function MusicPlayer() {
           animate={{ y: 0, opacity: 1 }}
           exit={{ y: 100, opacity: 0 }}
           transition={{ type: 'spring', damping: 25, stiffness: 300 }}
-          className="fixed bottom-[80px] left-0 right-0 z-[70] glass border-t border-border/50"
+          className="music-player fixed bottom-0 left-0 right-0 z-[90] glass border-t border-border/50"
           style={{ backdropFilter: 'blur(12px)', paddingBottom: 'env(safe-area-inset-bottom)' }}
         >
           {/* Progress bar on top like reference */}

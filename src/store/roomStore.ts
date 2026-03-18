@@ -414,22 +414,27 @@ export const useRoomStore = create<RoomState>((set, get) => ({
   sendMessage: async (message) => {
     const { currentRoom, userName, messages } = get();
     if (!currentRoom || !message.trim()) return;
-    
+
+    const trimmed = message.trim();
     const newMessage: RoomMessage = {
       id: crypto.randomUUID(),
       user_name: userName,
-      message: message.trim(),
+      message: trimmed,
       created_at: new Date().toISOString(),
     };
-    
+
     // Add locally immediately for instant feedback
-    set({ messages: [...messages, newMessage] });
-    
-    await supabase.from('room_messages').insert({
+    set((state) => ({ messages: [...state.messages, newMessage] }));
+
+    const { error } = await supabase.from('room_messages').insert({
       room_id: currentRoom.id,
       user_name: userName,
-      message: message.trim(),
+      message: trimmed,
     });
+
+    if (error) {
+      console.error('Failed to send room message', error);
+    }
   },
   
   requestSong: async (song) => {
@@ -445,7 +450,7 @@ export const useRoomStore = create<RoomState>((set, get) => ({
     };
     
     // Add locally immediately for instant feedback
-    set({ songRequests: [...songRequests, newRequest] });
+    set((state) => ({ songRequests: [...state.songRequests, newRequest] }));
     
     await supabase.from('song_requests').insert({
       room_id: currentRoom.id,
@@ -565,7 +570,7 @@ export const useRoomStore = create<RoomState>((set, get) => ({
         table: 'room_messages',
         filter: `room_id=eq.${roomId}`,
       }, (payload: { new: unknown }) => {
-        set({ messages: [...get().messages, payload.new as RoomMessage] });
+        set((state) => ({ messages: [...state.messages, payload.new as RoomMessage] }));
       })
         .on('postgres_changes', {
           event: 'INSERT',
@@ -573,7 +578,7 @@ export const useRoomStore = create<RoomState>((set, get) => ({
           table: 'song_requests',
           filter: `room_id=eq.${roomId}`,
         }, (payload: { new: unknown }) => {
-          set({ songRequests: [...get().songRequests, payload.new as SongRequest] });
+          set((state) => ({ songRequests: [...state.songRequests, payload.new as SongRequest] }));
         })
         .on('postgres_changes', {
           event: 'UPDATE',

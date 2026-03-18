@@ -66,7 +66,9 @@
     font-family: 'Poppins', 'Segoe UI', system-ui, sans-serif;
     background: var(--gradient-bg);
     background-attachment: fixed;
-    overflow: hidden;
+    overflow-x: hidden;
+    overflow-y: auto;
+    padding-bottom: 98px; /* space for fixed music player */
   }
 }
 
@@ -157,6 +159,40 @@
   .player-seek::-webkit-slider-runnable-track {
     height: 4px;
     border-radius: 2px;
+  }
+
+  .music-player {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    z-index: 90;
+    background: rgba(10, 10, 18, 0.92);
+    backdrop-filter: blur(20px);
+    border-top: 1px solid rgba(255,255,255,0.08);
+    box-shadow: 0 -6px 25px rgba(0,0,0,0.35);
+  }
+
+  .telegram-btn {
+    position: fixed;
+    bottom: 104px;
+    right: 18px;
+    z-index: 95;
+    min-width: 150px;
+    pointer-events: auto;
+  }
+
+  @media (max-width: 768px) {
+    .music-player {
+      padding-bottom: env(safe-area-inset-bottom);
+    }
+    body {
+      padding-bottom: calc(94px + env(safe-area-inset-bottom));
+    }
+    .telegram-btn {
+      bottom: 96px;
+      right: 12px;
+    }
   }
 
   /* Horizontal scroll container */
