@@ -2,7 +2,7 @@ import { useQuery } from '@tanstack/react-query';
 import { fetchPlaylist } from '@/services/musicApi';
 import { usePlayerStore } from '@/store/playerStore';
 import SongCard from '@/components/SongCard';
-import { TrendingUp, Play, Shuffle, Flame } from 'lucide-react';
+import { Play, Shuffle } from 'lucide-react';
 import { motion } from 'framer-motion';
 
 const TRENDING_PLAYLISTS = [
@@ -55,8 +55,16 @@ export default function TrendingPage() {
           animate={{ opacity: 1, y: 0 }}
           className="relative flex flex-col sm:flex-row gap-6 items-start sm:items-end"
         >
-          <div className="w-40 h-40 rounded-xl bg-gradient-to-br from-primary to-accent flex items-center justify-center shadow-2xl shrink-0">
-            <Flame className="w-16 h-16 text-primary-foreground" />
+          <div className="w-40 h-40 rounded-xl shadow-2xl shrink-0 overflow-hidden bg-gradient-to-br from-orange-500 via-red-500 to-yellow-500 flex items-center justify-center relative">
+            {/* Flame effect background */}
+            <div className="absolute inset-0 animate-pulse opacity-50" style={{
+              background: 'radial-gradient(circle at 50% 30%, rgba(255,200,0,0.8), transparent)',
+            }} />
+            {/* Music notes icon */}
+            <div className="relative text-5xl z-10 animate-bounce" style={{ animationDelay: '0.1s' }}>
+              🔥
+            </div>
+            <div className="absolute top-2 right-4 text-3xl opacity-80">🎵</div>
           </div>
           <div>
             <p className="text-xs uppercase tracking-wider text-muted-foreground font-semibold mb-1">Charts</p>

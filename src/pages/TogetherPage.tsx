@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Headphones, Zap, Users, ArrowRight } from 'lucide-react';
+import { Zap, Users, ArrowRight } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -99,8 +99,16 @@ export default function TogetherPage() {
       >
         {/* Hero */}
         <div className="text-center mb-8">
-          <div className="w-20 h-20 mx-auto mb-4 rounded-full bg-gradient-to-br from-primary to-accent flex items-center justify-center shadow-2xl">
-            <Headphones className="w-10 h-10 text-primary-foreground" />
+          <div className="w-24 h-24 mx-auto mb-4 rounded-2xl shadow-2xl overflow-hidden bg-gradient-to-br from-cyan-400 via-blue-500 to-purple-600 flex items-center justify-center relative">
+            {/* Gradient glow */}
+            <div className="absolute inset-0 opacity-50" style={{
+              background: 'radial-gradient(circle at 50% 50%, rgba(0,255,200,0.4), transparent)',
+            }} />
+            {/* Headphones icon */}
+            <div className="relative z-10 text-5xl animate-bounce">🎧</div>
+            {/* Love hearts */}
+            <div className="absolute top-2 left-2 text-xl opacity-75 animate-pulse">💕</div>
+            <div className="absolute bottom-2 right-2 text-xl opacity-75 animate-pulse" style={{ animationDelay: '0.3s' }}>💕</div>
           </div>
           <h1 className="text-3xl font-bold font-display gradient-text mb-2">Listen Together</h1>
           <p className="text-muted-foreground">Real-time music with friends</p>

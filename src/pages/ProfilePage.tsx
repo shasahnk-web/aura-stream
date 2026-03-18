@@ -110,14 +110,14 @@ export default function ProfilePage() {
           {/* Avatar */}
           <div className="relative group mb-4">
             <div
-              className="w-28 h-28 rounded-full overflow-hidden border-4 border-background shadow-xl"
+              className="w-28 h-28 rounded-full overflow-hidden border-4 border-background shadow-xl flex items-center justify-center text-5xl"
               style={{ boxShadow: '0 0 30px hsl(270 76% 53% / 0.3)' }}
             >
               {profile.avatar_url ? (
                 <img src={profile.avatar_url} alt="Avatar" className="w-full h-full object-cover" />
               ) : (
-                <div className="w-full h-full flex items-center justify-center" style={{ background: 'var(--gradient-primary)' }}>
-                  <User className="w-12 h-12 text-primary-foreground" />
+                <div className="w-full h-full flex items-center justify-center text-3xl font-bold" style={{ background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)' }}>
+                  👤
                 </div>
               )}
             </div>

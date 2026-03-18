@@ -1,7 +1,7 @@
 import { useLikedStore } from '@/store/playerStore';
 import { usePlayerStore } from '@/store/playerStore';
 import SongCard from '@/components/SongCard';
-import { Heart, Play, Shuffle } from 'lucide-react';
+import { Play, Shuffle } from 'lucide-react';
 import { motion } from 'framer-motion';
 
 export default function LikedSongsPage() {
@@ -33,8 +33,16 @@ export default function LikedSongsPage() {
           animate={{ opacity: 1, y: 0 }}
           className="relative flex flex-col sm:flex-row gap-6 items-start sm:items-end"
         >
-          <div className="w-40 h-40 rounded-xl bg-gradient-to-br from-primary to-accent flex items-center justify-center shadow-2xl shrink-0">
-            <Heart className="w-16 h-16 text-primary-foreground" fill="currentColor" />
+          <div className="w-40 h-40 rounded-xl shadow-2xl shrink-0 overflow-hidden bg-gradient-to-br from-pink-400 via-rose-500 to-red-600 flex items-center justify-center relative">
+            {/* Gradient shine effect */}
+            <div className="absolute inset-0 opacity-40" style={{
+              background: 'radial-gradient(circle at 30% 30%, rgba(255,255,255,0.5), transparent)',
+            }} />
+            {/* Heart icon */}
+            <div className="relative z-10 text-6xl animate-pulse">❤️</div>
+            {/* Music notes around heart */}
+            <div className="absolute top-4 left-4 text-2xl opacity-80">♪</div>
+            <div className="absolute bottom-4 right-4 text-2xl opacity-80">♫</div>
           </div>
           <div>
             <p className="text-xs uppercase tracking-wider text-muted-foreground font-semibold mb-1">Playlist</p>
