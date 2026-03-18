@@ -159,7 +159,7 @@ export const useRoomStore = create<RoomState>((set, get) => ({
         userName,
       });
 
-      get().subscribeToRoom(roomId);
+      await get().subscribeToRoom(roomId);
       return { id: roomId };
     } catch (error: unknown) {
       const err = error as Error;
@@ -173,16 +173,19 @@ export const useRoomStore = create<RoomState>((set, get) => ({
       // Normalize room ID (ensure uppercase format)
       const normalizedRoomId = roomId.toUpperCase().trim();
 
-      // Validate room ID format early
-      if (!/^ROOM-\d{4}$/.test(normalizedRoomId)) {
-        const errMsg = `Invalid room ID format: ${roomId}`;
+      // Validate room ID format early - allow both ROOM-#### and #### formats
+      const isValidFormat = /^ROOM-\d{4}$/.test(normalizedRoomId) || /^\d{4}$/.test(normalizedRoomId);
+      const finalRoomId = /^\d{4}$/.test(normalizedRoomId) ? `ROOM-${normalizedRoomId}` : normalizedRoomId;
+      
+      if (!isValidFormat) {
+        const errMsg = `Invalid room ID format. Use ROOM-#### or just ####`;
         console.error(errMsg);
         return { success: false, error: errMsg };
       }
 
       // Check if already in this room
       const { currentRoom } = get();
-      if (currentRoom && currentRoom.id === normalizedRoomId) {
+      if (currentRoom && currentRoom.id === finalRoomId) {
         // Already in this room, just return success
         return { success: true };
       }
@@ -190,14 +193,14 @@ export const useRoomStore = create<RoomState>((set, get) => ({
       // Check if room exists with retries (in case of replication delay)
       let room = null;
       let attempts = 0;
-      const maxAttempts = 3;
-      const delayMs = 500;
+      const maxAttempts = 5;  // Increased attempts for more reliability
+      const delayMs = 300;  // Reduced delay for faster response
 
       while (attempts < maxAttempts && !room) {
         const { data: roomData, error: roomError } = await supabase
           .from('rooms')
           .select('*')
-          .eq('id', normalizedRoomId)
+          .eq('id', finalRoomId)
           .limit(1);
 
         if (roomError) {
@@ -218,7 +221,7 @@ export const useRoomStore = create<RoomState>((set, get) => ({
       }
 
       if (!room) {
-        const errMsg = `Room not found: ${normalizedRoomId}`;
+        const errMsg = `Room not found: ${finalRoomId}`;
         console.error(errMsg);
         return { success: false, error: errMsg };
       }
@@ -227,7 +230,7 @@ export const useRoomStore = create<RoomState>((set, get) => ({
 
       // Join as member
       const { error: joinError } = await supabase.from('room_members').upsert({
-        room_id: normalizedRoomId,
+        room_id: finalRoomId,
         user_id: userId,
         user_name: userName,
       }, { onConflict: 'room_id,user_id' });
@@ -253,7 +256,7 @@ export const useRoomStore = create<RoomState>((set, get) => ({
         userName,
       });
 
-      get().subscribeToRoom(normalizedRoomId);
+      await get().subscribeToRoom(finalRoomId);
       return { success: true };
     } catch (error: unknown) {
       const errorMsg = error instanceof Error ? error.message : String(error);
@@ -437,8 +440,11 @@ export const useRoomStore = create<RoomState>((set, get) => ({
     await supabase.from('song_requests').update({ status }).eq('id', requestId);
   },
   
-  subscribeToRoom: (roomId) => {
+  subscribeToRoom: async (roomId) => {
     try {
+      // First unsubscribe from any existing channel
+      get().unsubscribe();
+      
       const channel = supabase.channel(`room:${roomId}`, {
         config: { presence: { key: get().userName } },
       });
@@ -561,26 +567,26 @@ export const useRoomStore = create<RoomState>((set, get) => ({
           });
         });
 
-      channel.subscribe(async (status) => {
-        if (status === 'SUBSCRIBED') {
-          await channel.track({ user_name: get().userName });
+      // Load initial data BEFORE subscribing
+      const [membersRes, messagesRes, requestsRes] = await Promise.all([
+        supabase.from('room_members').select('*').eq('room_id', roomId).order('joined_at'),
+        supabase.from('room_messages').select('*').eq('room_id', roomId).order('created_at'),
+        supabase.from('song_requests').select('*').eq('room_id', roomId).order('created_at'),
+      ]);
 
-          // Load initial data
-          const [membersRes, messagesRes, requestsRes] = await Promise.all([
-            supabase.from('room_members').select('*').eq('room_id', roomId),
-            supabase.from('room_messages').select('*').eq('room_id', roomId).order('created_at'),
-            supabase.from('song_requests').select('*').eq('room_id', roomId).order('created_at'),
-          ]);
-
-          set({
-            members: (membersRes.data || []) as RoomMember[],
-            messages: (messagesRes.data || []) as RoomMessage[],
-            songRequests: (requestsRes.data || []) as unknown as SongRequest[],
-          });
-        }
+      set({
+        members: (membersRes.data || []) as RoomMember[],
+        messages: (messagesRes.data || []) as RoomMessage[],
+        songRequests: (requestsRes.data || []) as unknown as SongRequest[],
+        channel,
       });
 
-      set({ channel });
+      // Then subscribe for real-time updates
+      channel.subscribe(async (status) => {
+        if (status === 'SUBSCRIBED') {
+          await channel.track({ user_name: get().userName }).catch(e => console.error('Failed to track presence:', e));
+        }
+      });
     } catch (error) {
       console.error('Failed to subscribe to room realtime channel', error);
     }

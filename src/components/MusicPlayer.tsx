@@ -24,6 +24,7 @@ export default function MusicPlayer() {
   const audioRef = useRef<HTMLAudioElement>(null);
   const crossfadeAudioRef = useRef<HTMLAudioElement>(null);
   const crossfadeTimerRef = useRef<ReturnType<typeof setTimeout>>();
+  const containerRef = useRef<HTMLDivElement>(null);
   const {
     currentSong, isPlaying, volume, currentTime, duration,
     shuffle, repeat, togglePlay, setCurrentSong, setCurrentTime, setDuration,
