@@ -18,7 +18,7 @@ export interface RoomMessage {
 
 export interface SongRequest {
   id: string;
-  song_data: Song;
+  song_data: Song & { votes: number; voters: string[] };
   requested_by: string;
   status: 'pending' | 'accepted' | 'rejected';
   created_at: string;
@@ -44,6 +44,7 @@ interface RoomState {
   userId: string | null;
   userName: string;
   channel: RealtimeChannel | null;
+  cursors: { [userId: string]: { x: number; y: number; name: string; avatar?: string } };
   
   setUserName: (name: string) => void;
   createRoom: (userId: string, userName: string) => Promise<{ id?: string; error?: string }>;
@@ -54,6 +55,7 @@ interface RoomState {
   updatePlayback: (song: Song | null, isPlaying: boolean, time: number) => Promise<void>;
   setPartyMode: (enabled: boolean) => Promise<void>;
   emitBeatDrop: (time: number) => Promise<void>;
+  emitPlayTrack: (song: Song, time: number) => Promise<void>;
   
   // Chat
   sendMessage: (message: string) => Promise<void>;
@@ -65,6 +67,7 @@ interface RoomState {
   // Internal
   subscribeToRoom: (roomId: string) => void;
   unsubscribe: () => void;
+  sendCursorMove: (x: number, y: number) => void;
 }
 
 function generateRoomId(): string {
@@ -81,6 +84,7 @@ export const useRoomStore = create<RoomState>((set, get) => ({
   userId: null,
   userName: '',
   channel: null,
+  cursors: {},
   
   setUserName: (name) => {
     try {
@@ -410,6 +414,17 @@ export const useRoomStore = create<RoomState>((set, get) => ({
       currentRoom: { ...currentRoom, last_drop_at: time }
     });
   },
+
+  emitPlayTrack: async (song, time) => {
+    const { currentRoom, isHost, channel } = get();
+    if (!currentRoom || !isHost) return;
+
+    channel?.send({
+      type: 'broadcast',
+      event: 'play_track',
+      payload: { song, time },
+    });
+  },
   
   sendMessage: async (message) => {
     const { currentRoom, userName, messages } = get();
@@ -447,6 +462,8 @@ export const useRoomStore = create<RoomState>((set, get) => ({
       requested_by: userName,
       status: 'pending',
       created_at: new Date().toISOString(),
+      votes: 0,
+      voters: [],
     };
     
     // Add locally immediately for instant feedback
@@ -464,6 +481,16 @@ export const useRoomStore = create<RoomState>((set, get) => ({
     if (!isHost) return;
     
     await supabase.from('song_requests').update({ status }).eq('id', requestId);
+  },
+  
+  sendCursorMove: (x, y) => {
+    const { channel, userId, userName } = get();
+    if (!channel || !userId) return;
+    channel.send({
+      type: 'broadcast',
+      event: 'cursor_move',
+      payload: { x, y, userId, userName }
+    });
   },
   
   subscribeToRoom: async (roomId) => {
@@ -524,6 +551,36 @@ export const useRoomStore = create<RoomState>((set, get) => ({
             ...currentRoom,
             last_drop_at: payload.time,
           },
+        });
+      });
+
+      // Subscribe to cursor movements
+      channel.on('broadcast', { event: 'cursor_move' }, ({ payload }) => {
+        set((state) => ({
+          cursors: {
+            ...state.cursors,
+            [payload.userId]: {
+              x: payload.x,
+              y: payload.y,
+              name: payload.userName,
+            }
+          }
+        }));
+      });
+
+      // Subscribe to play track commands
+      channel.on('broadcast', { event: 'play_track' }, ({ payload }) => {
+        const { currentRoom, isHost } = get();
+        if (!currentRoom || isHost) return;
+
+        // Set song and play
+        set({
+          currentRoom: {
+            ...currentRoom,
+            current_song: payload.song,
+            is_playing: true,
+            playback_time: payload.time,
+          }
         });
       });
 

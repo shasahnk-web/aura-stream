@@ -18,7 +18,7 @@ export default function RoomPage() {
   const { 
     currentRoom, members, messages, songRequests, isHost, userName,
     joinRoom, leaveRoom, sendMessage, updatePlayback, requestSong, updateRequestStatus,
-    setPartyMode, endRoom
+    setPartyMode, endRoom, cursors, sendCursorMove, voteSong, emitPlayTrack
   } = useRoomStore();
   const { currentSong, isPlaying, setCurrentSong, setIsPlaying, playNext, currentTime, setCurrentTime } = usePlayerStore();
   
@@ -80,6 +80,19 @@ export default function RoomPage() {
     chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
   
+  // Cursor tracking
+  useEffect(() => {
+    let lastEmit = 0;
+    const handleMouseMove = (e: MouseEvent) => {
+      if (Date.now() - lastEmit > 50) {
+        sendCursorMove(e.clientX, e.clientY);
+        lastEmit = Date.now();
+      }
+    };
+    document.addEventListener('mousemove', handleMouseMove);
+    return () => document.removeEventListener('mousemove', handleMouseMove);
+  }, [sendCursorMove]);
+  
   const handleLeave = async () => {
     if (user) {
       await leaveRoom(user.id);
@@ -130,7 +143,9 @@ export default function RoomPage() {
     setCurrentSong(song);
     setIsPlaying(true);
     setCurrentTime(0);
-    updatePlayback(song, true, 0);
+    if (isHost) {
+      emitPlayTrack(song, 0);
+    }
   };
 
   const handleTogglePlay = () => {
@@ -199,6 +214,17 @@ export default function RoomPage() {
       <div className="flex-1 flex gap-0 min-w-0 overflow-hidden">
         {/* Main Content Area */}
         <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
+          {/* Room Header */}
+          <div className="p-4 border-b border-border/50 shrink-0 flex items-center justify-between">
+            <div>
+              <h3 className="text-lg font-semibold text-foreground">{currentRoom?.room_name}</h3>
+              <p className="text-sm text-muted-foreground">Room ID: {roomId}</p>
+            </div>
+            <Button variant="outline" size="sm" onClick={handleCopyRoomId}>
+              <Copy className="w-4 h-4 mr-1" /> Copy ID
+            </Button>
+          </div>
+          
           {/* Now Playing */}
           <div className="p-4 border-b border-border/50 shrink-0">
             {currentSong ? (
@@ -325,7 +351,7 @@ export default function RoomPage() {
               <p className="text-sm text-muted-foreground text-center py-8">No pending requests</p>
             ) : (
               <div className="space-y-3">
-                {songRequests.filter(r => r.status === 'pending').map((request) => (
+                {songRequests.filter(r => r.status === 'pending').sort((a, b) => (b.song_data.votes || 0) - (a.song_data.votes || 0)).map((request) => (
                   <div key={request.id} className="p-3 rounded-xl glass">
                     <div className="flex items-center gap-3">
                       <img 
@@ -337,6 +363,24 @@ export default function RoomPage() {
                         <p className="text-sm font-medium text-foreground truncate">{request.song_data.name}</p>
                         <p className="text-xs text-muted-foreground truncate">by {request.requested_by}</p>
                       </div>
+                    </div>
+                    <div className="flex items-center gap-2 mt-2">
+                      <Button 
+                        size="sm" 
+                        variant="outline" 
+                        onClick={() => voteSong(request.id, 'up')}
+                        disabled={request.song_data.voters?.includes(user?.id || '')}
+                      >
+                        ⬆ {request.song_data.votes || 0}
+                      </Button>
+                      <Button 
+                        size="sm" 
+                        variant="outline" 
+                        onClick={() => voteSong(request.id, 'down')}
+                        disabled={request.song_data.voters?.includes(user?.id || '')}
+                      >
+                        ⬇
+                      </Button>
                     </div>
                     {isHost && (
                       <div className="flex gap-2 mt-2">
@@ -364,6 +408,24 @@ export default function RoomPage() {
         </div>
       </div>
       </div>
+      
+      {/* Live Cursors */}
+      {Object.entries(cursors).map(([userId, cursor]) => (
+        userId !== user?.id && (
+          <div
+            key={userId}
+            className="fixed pointer-events-none z-[9999] transition-transform duration-100 ease-linear"
+            style={{
+              transform: `translate(${cursor.x - 10}px, ${cursor.y - 10}px)`,
+            }}
+          >
+            <div className="flex items-center gap-1 bg-purple-600 text-white text-xs px-2 py-1 rounded-md shadow-lg">
+              <div className="w-4 h-4 bg-white rounded-full"></div>
+              <span>{cursor.name}</span>
+            </div>
+          </div>
+        )
+      ))}
       
       {/* Search Modal */}
       {showSearch && (

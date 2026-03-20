@@ -48,11 +48,88 @@
     --sidebar-background: 235 25% 11%;
     --sidebar-foreground: 0 0% 85%;
     --sidebar-primary: 270 76% 53%;
+    --background: 235 25% 11%;
+    --foreground: 0 0% 100%;
+
+    --card: 235 20% 14%;
+    --card-foreground: 0 0% 100%;
+
+    --popover: 235 20% 12%;
+    --popover-foreground: 0 0% 100%;
+
+    --primary: 270 76% 53%;
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 240 15% 18%;
+    --secondary-foreground: 0 0% 90%;
+
+    --muted: 240 12% 16%;
+    --muted-foreground: 225 15% 63%;
+
+    --accent: 350 100% 71%;
+    --accent-foreground: 0 0% 100%;
+
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 98%;
+
+    --border: 240 10% 20%;
+    --input: 240 10% 20%;
+    --ring: 270 76% 53%;
+
+    --radius: 0.75rem;
+
+    --glass-bg: 0 0% 100% / 0.08;
+    --glass-border: 0 0% 100% / 0.1;
+    --glass-hover: 0 0% 100% / 0.12;
+    --gradient-primary: linear-gradient(135deg, hsl(270 76% 53%), hsl(350 100% 71%));
+    --gradient-bg: linear-gradient(135deg, hsl(240 40% 8%), hsl(250 30% 18%), hsl(235 25% 12%));
+    --gradient-card: linear-gradient(135deg, hsl(var(--glass-bg)), hsl(0 0% 100% / 0.02));
+    --shadow-glow: 0 0 40px hsl(270 76% 53% / 0.15);
+    --shadow-card: 0 8px 32px hsl(0 0% 0% / 0.3);
+
+    --sidebar-background: 235 25% 11%;
+    --sidebar-foreground: 0 0% 85%;
+    --sidebar-primary: 270 76% 53%;
     --sidebar-primary-foreground: 0 0% 100%;
     --sidebar-accent: 240 15% 18%;
     --sidebar-accent-foreground: 0 0% 95%;
     --sidebar-border: 240 10% 20%;
     --sidebar-ring: 270 76% 53%;
+  }
+
+  * {
+    box-sizing: border-box;
+  }
+
+  html {
+    font-size: 16px;
+  }
+
+  body {
+    font-size: 1rem;
+    line-height: 1.5;
+  }
+
+  h1 {
+    font-size: 1.875rem; /* 30px */
+  }
+
+  h2 {
+    font-size: 1.5rem; /* 24px */
+  }
+
+  h3 {
+    font-size: 1.25rem; /* 20px */
+  }
+
+  button {
+    min-height: 44px;
+  }
+
+  @media (max-width: 768px) {
+    button {
+      min-height: 44px;
+    }
   }
 }
 

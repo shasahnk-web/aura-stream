@@ -100,7 +100,7 @@ export default function MusicPlayer() {
 
     if (audioRef.current) {
       const drift = Math.abs(audioRef.current.currentTime - currentRoom.playback_time);
-      if (drift > 1.5) {
+      if (drift > 1.0) {
         audioRef.current.currentTime = currentRoom.playback_time;
         setCurrentTime(currentRoom.playback_time);
       }
@@ -112,6 +112,7 @@ export default function MusicPlayer() {
   const [queueOpen, setQueueOpen] = useState(false);
   const [lyricsOpen, setLyricsOpen] = useState(false);
   const [nowPlayingOpen, setNowPlayingOpen] = useState(false);
+  const [expanded, setExpanded] = useState(false);
 
   // Load song
   useEffect(() => {
@@ -175,13 +176,14 @@ export default function MusicPlayer() {
     setCurrentTime(current);
 
     if (isHost && currentSong) {
-      // Keep room playback state in sync with host time at least every 1s
-      const shouldSync = Math.abs(current - (currentRoom?.playback_time ?? 0)) > 1.2;
-      if (shouldSync) {
+      // Throttle time broadcasts to every 500ms
+      const now = Date.now();
+      if (now - (broadcastRef.current.timeBroadcast || 0) > 500) {
         updatePlayback(currentSong, isPlaying, current);
+        broadcastRef.current.timeBroadcast = now;
       }
     }
-  }, [setCurrentTime, isHost, currentSong, isPlaying, updatePlayback, currentRoom?.playback_time]);
+  }, [setCurrentTime, isHost, currentSong, isPlaying, updatePlayback]);
 
   const onLoadedMetadata = useCallback(() => {
     if (audioRef.current) setDuration(audioRef.current.duration);
@@ -253,7 +255,7 @@ export default function MusicPlayer() {
           animate={{ y: 0, opacity: 1 }}
           exit={{ y: 100, opacity: 0 }}
           transition={{ type: 'spring', damping: 25, stiffness: 300 }}
-          className="music-player fixed bottom-0 left-0 right-0 z-[90] glass border-t border-border/50"
+          className={`music-player fixed bottom-16 md:bottom-0 left-0 right-0 z-[90] glass border-t border-border/50 transition-all duration-300 ${expanded ? 'h-screen bottom-0' : ''}`}
           style={{ backdropFilter: 'blur(12px)', paddingBottom: 'env(safe-area-inset-bottom)' }}
         >
           {/* Progress bar on top like reference */}
@@ -299,6 +301,12 @@ export default function MusicPlayer() {
             >
               {isPlaying ? <Pause className="w-5 h-5 text-primary" /> : <Play className="w-5 h-5 text-primary ml-0.5" />}
             </button>
+            <button
+              onClick={(e) => { e.stopPropagation(); setExpanded(!expanded); }}
+              className="w-10 h-10 rounded-full flex items-center justify-center text-foreground hover:bg-white/10 transition-all"
+            >
+              <Maximize2 className="w-5 h-5" />
+            </button>
           </div>
 
           {/* Desktop layout */}
@@ -327,7 +335,7 @@ export default function MusicPlayer() {
               <div className="flex items-center gap-3">
                 <button
                   onClick={playPrev}
-                  className="w-10 h-10 rounded-full flex items-center justify-center text-foreground hover:bg-white/10 transition-all"
+                  className="w-12 h-12 rounded-full flex items-center justify-center text-foreground hover:bg-white/10 transition-all"
                 >
                   <SkipBack className="w-5 h-5" />
                 </button>
@@ -340,7 +348,7 @@ export default function MusicPlayer() {
                 </button>
                 <button
                   onClick={playNext}
-                  className="w-10 h-10 rounded-full flex items-center justify-center text-foreground hover:bg-white/10 transition-all"
+                  className="w-12 h-12 rounded-full flex items-center justify-center text-foreground hover:bg-white/10 transition-all"
                 >
                   <SkipForward className="w-5 h-5" />
                 </button>
