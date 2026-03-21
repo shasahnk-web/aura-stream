@@ -54,12 +54,12 @@ export default function SongCard({ song, songs, index = 0, showNumber = true }: 
 
   return (
     <div
-      className="song-item group"
+      className="song-card"
       onClick={handlePlay}
     >
       {/* Number */}
       {showNumber && (
-        <div className="w-8 text-center text-muted-foreground text-sm font-medium shrink-0">
+        <div className="w-8 text-center text-subtext text-sm font-medium shrink-0">
           {isCurrentSong && isPlaying ? (
             <div className="flex items-center justify-center gap-[2px]">
               {[0, 1, 2].map(i => (
@@ -77,44 +77,44 @@ export default function SongCard({ song, songs, index = 0, showNumber = true }: 
       )}
 
       {/* Image */}
-      <div className="relative w-[50px] h-[50px] rounded-[10px] overflow-hidden mr-4 shrink-0 shadow-md">
+      <div className="relative w-[60px] h-[60px] rounded-[14px] overflow-hidden mr-4 shrink-0 shadow-md">
         <img src={song.image} alt={song.name} className="w-full h-full object-cover" />
         <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
           {isCurrentSong && isPlaying ? (
-            <Pause className="w-5 h-5 text-foreground" />
+            <Pause className="w-6 h-6 text-white" />
           ) : (
-            <Play className="w-5 h-5 text-foreground ml-0.5" />
+            <Play className="w-6 h-6 text-white ml-0.5" />
           )}
         </div>
       </div>
 
       {/* Info */}
       <div className="flex-1 min-w-0">
-        <p className={`font-semibold text-[15px] truncate ${isCurrentSong ? 'text-primary' : 'text-foreground'}`}>
+        <p className={`font-semibold text-base truncate ${isCurrentSong ? 'text-primary' : 'text-text'}`}>
           {song.name}
         </p>
-        <p className="text-[13px] text-muted-foreground truncate">{song.artist}</p>
+        <p className="text-sm text-subtext truncate">{song.artist}</p>
       </div>
 
       {/* Duration */}
       {duration && (
-        <span className="text-[13px] text-muted-foreground mr-4 hidden sm:block">{duration}</span>
+        <span className="text-sm text-subtext mr-4 hidden sm:block">{duration}</span>
       )}
 
       {/* Actions */}
       <div className="flex items-center gap-2.5">
         <button
           onClick={(e) => { e.stopPropagation(); toggleLike(song); }}
-          className={`transition-all hover:scale-110 ${liked ? 'text-accent' : 'text-muted-foreground hover:text-foreground'}`}
+          className={`transition-all hover:scale-110 ${liked ? 'text-accent' : 'text-subtext hover:text-text'}`}
         >
-          <Heart className="w-4 h-4" fill={liked ? 'currentColor' : 'none'} />
+          <Heart className="w-5 h-5" fill={liked ? 'currentColor' : 'none'} />
         </button>
         <button
           onClick={handleDownload}
-          className="text-muted-foreground hover:text-foreground transition-all hover:scale-110"
+          className="text-subtext hover:text-text transition-all hover:scale-110"
           title="Download"
         >
-          <Download className="w-4 h-4" />
+          <Download className="w-5 h-5" />
         </button>
       </div>
     </div>

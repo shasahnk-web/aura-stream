@@ -17,8 +17,8 @@ export default function RoomPage() {
   const { user } = useAuthStore();
   const { 
     currentRoom, members, messages, songRequests, isHost, userName,
-    joinRoom, leaveRoom, sendMessage, updatePlayback, requestSong, updateRequestStatus,
-    setPartyMode, endRoom, cursors, sendCursorMove, voteSong, emitPlayTrack
+    joinRoom, leaveRoom, sendMessage, requestSong, updateRequestStatus,
+    setPartyMode, endRoom, cursors, sendCursorMove, voteSong, playTrack, syncTime
   } = useRoomStore();
   const { currentSong, isPlaying, setCurrentSong, setIsPlaying, playNext, currentTime, setCurrentTime } = usePlayerStore();
   
@@ -28,7 +28,6 @@ export default function RoomPage() {
   const [searching, setSearching] = useState(false);
   const [showSearch, setShowSearch] = useState(false);
   const chatEndRef = useRef<HTMLDivElement>(null);
-  const audioRef = useRef<HTMLAudioElement | null>(null);
   
   // Join room on mount if not already joined
   useEffect(() => {
@@ -53,27 +52,16 @@ export default function RoomPage() {
     };
   }, [roomId, user, currentRoom, joinRoom, navigate]);
   
-  // Sync playback for non-hosts
-  useEffect(() => {
-    if (!currentRoom || isHost) return;
-
-    if (currentRoom.current_song) {
-      setCurrentSong(currentRoom.current_song);
-    }
-    setIsPlaying(currentRoom.is_playing);
-    setCurrentTime(currentRoom.playback_time);
-  }, [currentRoom, isHost, setCurrentSong, setIsPlaying, setCurrentTime]);
-  
   // Host broadcasts playback state
   useEffect(() => {
     if (!isHost || !currentRoom) return;
     
     const interval = setInterval(() => {
-      updatePlayback(currentSong, isPlaying, 0);
-    }, 5000);
+      syncTime(currentTime);
+    }, 2000);
     
     return () => clearInterval(interval);
-  }, [isHost, currentRoom, currentSong, isPlaying, updatePlayback]);
+  }, [isHost, currentRoom, currentTime, syncTime]);
   
   // Auto-scroll chat
   useEffect(() => {
@@ -144,14 +132,14 @@ export default function RoomPage() {
     setIsPlaying(true);
     setCurrentTime(0);
     if (isHost) {
-      emitPlayTrack(song, 0);
+      playTrack(song, 0);
     }
   };
 
   const handleTogglePlay = () => {
     setIsPlaying(!isPlaying);
     if (isHost && currentSong) {
-      updatePlayback(currentSong, !isPlaying, currentTime);
+      playTrack(currentSong, currentTime);
     }
   };
   
@@ -215,13 +203,13 @@ export default function RoomPage() {
         {/* Main Content Area */}
         <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
           {/* Room Header */}
-          <div className="p-4 border-b border-border/50 shrink-0 flex items-center justify-between">
+          <div className="room-header p-4 border-b border-border/50 shrink-0 flex items-center justify-between">
             <div>
-              <h3 className="text-lg font-semibold text-foreground">{currentRoom?.room_name}</h3>
-              <p className="text-sm text-muted-foreground">Room ID: {roomId}</p>
+              <h3 className="text-xl font-bold text-text">Room ID: {roomId}</h3>
             </div>
             <Button variant="outline" size="sm" onClick={handleCopyRoomId}>
-              <Copy className="w-4 h-4 mr-1" /> Copy ID
+              <Copy className="w-4 h-4 mr-2" />
+              Copy ID
             </Button>
           </div>
           

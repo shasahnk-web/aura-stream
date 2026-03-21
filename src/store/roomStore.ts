@@ -51,11 +51,12 @@ interface RoomState {
   createRoomDebug: (userId: string, userName: string) => Promise<{ id?: string; error?: string }>;
   joinRoom: (roomId: string, userId: string, userName: string) => Promise<{ success: boolean; error?: string }>;
   leaveRoom: (userId: string) => Promise<void>;  endRoom: (roomId: string) => Promise<{ success: boolean; error?: string }>;  
+  
   // Host controls
-  updatePlayback: (song: Song | null, isPlaying: boolean, time: number) => Promise<void>;
+  playTrack: (song: Song, time: number) => Promise<void>;
+  syncTime: (time: number) => Promise<void>;
   setPartyMode: (enabled: boolean) => Promise<void>;
   emitBeatDrop: (time: number) => Promise<void>;
-  emitPlayTrack: (song: Song, time: number) => Promise<void>;
   
   // Chat
   sendMessage: (message: string) => Promise<void>;
@@ -356,14 +357,14 @@ export const useRoomStore = create<RoomState>((set, get) => ({
     }
   },
   
-  updatePlayback: async (song, isPlaying, time) => {
+  playTrack: async (song, time) => {
     const { currentRoom, isHost, channel } = get();
     if (!currentRoom || !isHost) return;
 
     // Update database
     await supabase.from('rooms').update({
       current_song: song as unknown,
-      is_playing: isPlaying,
+      is_playing: true,
       playback_time: time,
       updated_at: new Date().toISOString(),
     }).eq('id', currentRoom.id);
@@ -371,12 +372,20 @@ export const useRoomStore = create<RoomState>((set, get) => ({
     // Broadcast to all listeners
     channel?.send({
       type: 'broadcast',
-      event: 'playback',
-      payload: { song, isPlaying, time },
+      event: 'play_track',
+      payload: { song, time },
     });
+  },
 
-    set({
-      currentRoom: { ...currentRoom, current_song: song, is_playing: isPlaying, playback_time: time }
+  syncTime: async (time) => {
+    const { currentRoom, isHost, channel } = get();
+    if (!currentRoom || !isHost) return;
+
+    // Broadcast to all listeners
+    channel?.send({
+      type: 'broadcast',
+      event: 'sync_time',
+      payload: { time },
     });
   },
 
@@ -412,17 +421,6 @@ export const useRoomStore = create<RoomState>((set, get) => ({
 
     set({
       currentRoom: { ...currentRoom, last_drop_at: time }
-    });
-  },
-
-  emitPlayTrack: async (song, time) => {
-    const { currentRoom, isHost, channel } = get();
-    if (!currentRoom || !isHost) return;
-
-    channel?.send({
-      type: 'broadcast',
-      event: 'play_track',
-      payload: { song, time },
     });
   },
   
@@ -503,7 +501,7 @@ export const useRoomStore = create<RoomState>((set, get) => ({
       });
 
       // Subscribe to playback broadcasts
-      channel.on('broadcast', { event: 'playback' }, ({ payload }) => {
+      channel.on('broadcast', { event: 'play_track' }, ({ payload }) => {
         const { currentRoom, isHost } = get();
         if (!currentRoom || isHost) return;
 
@@ -511,10 +509,26 @@ export const useRoomStore = create<RoomState>((set, get) => ({
           currentRoom: {
             ...currentRoom,
             current_song: payload.song,
-            is_playing: payload.isPlaying,
+            is_playing: true,
             playback_time: payload.time,
           }
         });
+        const audio = document.querySelector('audio');
+        if (audio) {
+          audio.src = payload.song.url;
+          audio.currentTime = payload.time;
+          audio.play();
+        }
+      });
+      
+      channel.on('broadcast', { event: 'sync_time' }, ({ payload }) => {
+        const { isHost } = get();
+        if (isHost) return;
+        
+        const audio = document.querySelector('audio');
+        if (audio && Math.abs(audio.currentTime - payload.time) > 1) {
+          audio.currentTime = payload.time;
+        }
       });
 
       // Subscribe to host change notifications
@@ -566,22 +580,6 @@ export const useRoomStore = create<RoomState>((set, get) => ({
             }
           }
         }));
-      });
-
-      // Subscribe to play track commands
-      channel.on('broadcast', { event: 'play_track' }, ({ payload }) => {
-        const { currentRoom, isHost } = get();
-        if (!currentRoom || isHost) return;
-
-        // Set song and play
-        set({
-          currentRoom: {
-            ...currentRoom,
-            current_song: payload.song,
-            is_playing: true,
-            playback_time: payload.time,
-          }
-        });
       });
 
       // Subscribe to rooms table updates (fallback for playback/host state)
