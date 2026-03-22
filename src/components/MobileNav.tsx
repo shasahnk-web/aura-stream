@@ -28,7 +28,7 @@ export default function MobileNav() {
           index === 2 ? (
             <li key={item.path} className="list">
               <NavLink to={item.path} className="center-btn">
-                <item.icon className="w-8 h-8" />
+                <Headphones />
               </NavLink>
             </li>
           ) : (
