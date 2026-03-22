@@ -25,6 +25,13 @@ export default function MobileNav() {
     <div className="bottom-nav md:hidden">
       <ul>
         {navItems.map((item, index) => (
+          index === 2 ? (
+            <li key={item.path} className="list">
+              <NavLink to={item.path} className="center-btn">
+                <item.icon className="w-8 h-8" />
+              </NavLink>
+            </li>
+          ) : (
           <li
             key={item.path}
             className={`list ${activeIndex === index ? 'active' : ''}`}
@@ -34,6 +41,7 @@ export default function MobileNav() {
               <span className="text">{item.text}</span>
             </NavLink>
           </li>
+          )
         ))}
         <div className="indicator"></div>
       </ul>
