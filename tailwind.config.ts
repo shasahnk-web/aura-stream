@@ -122,11 +122,13 @@ export default {
         ":root": {
           "--nav-height": "65px",
           "--player-height": "75px",
+          "--player-offset": "15px",
         },
         "@media (max-width: 768px)": {
           ":root": {
             "--nav-height": "60px",
             "--player-height": "80px",
+            "--player-offset": "55px",
           },
         },
       });
@@ -150,7 +152,7 @@ export default {
           position: "fixed",
           left: "10px",
           right: "10px",
-          bottom: "calc(var(--nav-height) + 15px)",
+          bottom: "calc(var(--nav-height) + var(--player-offset))",
           height: "var(--player-height)",
           zIndex: "200",
         },
@@ -212,9 +214,6 @@ export default {
             height: "60px",
             top: "-25px",
             fontSize: "22px",
-          },
-          ".music-player": {
-            bottom: "calc(var(--nav-height) + 32px)",
           },
         },
         ".bottom-nav ul": {
