@@ -91,6 +91,10 @@ export default {
           "50%": { transform: "translate(30px, -30px)" },
           "100%": { transform: "translate(0, 0)" },
         },
+        bounce: {
+          "0%, 100%": { transform: "scaleY(0.3)" },
+          "50%": { transform: "scaleY(1)" },
+        },
         pulse: {
           "0%": { transform: "scale(1)", opacity: "0.5" },
           "70%": { transform: "scale(1.5)", opacity: "0" },
@@ -110,6 +114,7 @@ export default {
         pulse: "pulse 2s infinite",
         "spin-slow": "spin-slow 8s linear infinite",
         float: "float 10s infinite ease-in-out",
+        bounce: "bounce 1s infinite ease-in-out",
         "wave": "wave 1s ease-in-out infinite",
       },
     },
