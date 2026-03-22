@@ -170,7 +170,7 @@ export default {
             height: "60px",
           },
           ".music-player": {
-            bottom: "calc(var(--nav-height) + 8px)",
+            bottom: "calc(var(--nav-height) + 32px)",
           },
         },
         ".bottom-nav ul": {
