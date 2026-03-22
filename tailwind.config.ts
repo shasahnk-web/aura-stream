@@ -86,6 +86,11 @@ export default {
           "0%": { transform: "rotate(0deg)" },
           "100%": { transform: "rotate(360deg)" },
         },
+        float: {
+          "0%": { transform: "translate(0, 0)" },
+          "50%": { transform: "translate(30px, -30px)" },
+          "100%": { transform: "translate(0, 0)" },
+        },
         pulse: {
           "0%": { transform: "scale(1)", opacity: "0.5" },
           "70%": { transform: "scale(1.5)", opacity: "0" },
@@ -104,6 +109,7 @@ export default {
         "pulse-glow": "pulse-glow 2s ease-in-out infinite",
         pulse: "pulse 2s infinite",
         "spin-slow": "spin-slow 8s linear infinite",
+        float: "float 10s infinite ease-in-out",
         "wave": "wave 1s ease-in-out infinite",
       },
     },
