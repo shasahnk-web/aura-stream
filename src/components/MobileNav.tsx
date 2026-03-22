@@ -1,12 +1,13 @@
 import { useEffect, useMemo } from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
+import { Home, Search, Headphones, Library, Settings } from 'lucide-react';
 
 const navItems = [
-  { icon: 'home-outline', text: 'Home', path: '/' },
-  { icon: 'search-outline', text: 'Search', path: '/search' },
-  { icon: 'headset-outline', text: 'Together', path: '/together' },
-  { icon: 'albums-outline', text: 'Library', path: '/library' },
-  { icon: 'settings-outline', text: 'Settings', path: '/settings' },
+  { icon: Home, text: 'Home', path: '/' },
+  { icon: Search, text: 'Search', path: '/search' },
+  { icon: Headphones, text: 'Together', path: '/together' },
+  { icon: Library, text: 'Library', path: '/library' },
+  { icon: Settings, text: 'Settings', path: '/settings' },
 ];
 
 export default function MobileNav() {
@@ -29,9 +30,7 @@ export default function MobileNav() {
             className={`list ${activeIndex === index ? 'active' : ''}`}
           >
             <NavLink to={item.path}>
-              <span className="icon">
-                <ion-icon name={item.icon}></ion-icon>
-              </span>
+              <span className="icon"><item.icon /></span>
               <span className="text">{item.text}</span>
             </NavLink>
           </li>

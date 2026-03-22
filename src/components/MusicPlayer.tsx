@@ -127,7 +127,7 @@ export default function MusicPlayer() {
             animate={{ y: 0, opacity: 1 }}
             exit={{ y: 100, opacity: 0 }}
             transition={{ type: 'spring', damping: 25, stiffness: 300 }}
-            className="music-player"
+            className="music-player fixed z-[9999] left-[10px] right-[10px] h-[var(--player-height)] bottom-[calc(var(--nav-height)+8px)] md:bottom-[calc(var(--nav-height)+10px)]"
           >
             <div className="flex items-center gap-3 w-full">
               <img
