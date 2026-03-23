@@ -1,7 +1,8 @@
 import { create } from 'zustand';
 import { supabase } from '@/integrations/supabase/client';
-import { Song, usePlayerStore } from './playerStore';
+import { Song } from './playerStore';
 import type { RealtimeChannel } from '@supabase/supabase-js';
+import { usePlayerStore } from './playerStore';
 
 export interface RoomMember {
   user_id: string;
@@ -31,7 +32,7 @@ export interface Room {
   current_song: Song | null;
   is_playing: boolean;
   playback_time: number;
-  updated_at: string; // ISO string
+  updated_at: string;
   started_at?: number | null;
   party_mode?: boolean;
   last_drop_at?: number;
@@ -57,19 +58,8 @@ interface RoomState {
   // Host controls
   playTrack: (song: Song, time: number, isPlaying: boolean) => Promise<void>;
   syncTime: (time: number) => Promise<void>;
-    setPartyMode: (enabled: boolean) => Promise<void>;
-  emitBeatDrop: (time: number) => Promise<void>;
-  setPartyMode: (enabled: boolean) => {
-    const { currentRoom, isHost } = get();
-    if (!currentRoom || !isHost) return;
-    supabase.from('rooms').update({ party_mode: enabled }).eq('id', currentRoom.id);
-  },
-  emitBeatDrop: (time: number) => {
-    const { currentRoom, channel } = get();
-    if (channel) {
-      channel.send({ type: 'broadcast', event: 'beat_drop', payload: { time } });
-    }
-  },
+  setPartyMode: (enabled: boolean) => void;
+  emitBeatDrop: (time: number) => void;
   
   // Chat
   sendMessage: (message: string) => Promise<void>;
@@ -109,28 +99,22 @@ export const useRoomStore = create<RoomState>((set, get) => ({
   },
   
   createRoom: async (userId, userName) => {
-    // ... (logic for creating room, unchanged)
     try {
       let roomId: string;
       let attempts = 0;
       const maxAttempts = 10;
 
-      // Generate unique room ID
       do {
         roomId = generateRoomId();
         attempts++;
 
-        const { data: existing, error: checkError } = await supabase
+        const { data: existing } = await supabase
           .from('rooms')
           .select('id')
           .eq('id', roomId)
           .limit(1);
 
-        if (checkError) {
-          if (!existing || existing.length === 0) break;
-        } else if (!existing || existing.length === 0) {
-          break;
-        }
+        if (!existing || existing.length === 0) break;
       } while (attempts < maxAttempts);
 
       if (attempts >= maxAttempts) {
@@ -183,21 +167,16 @@ export const useRoomStore = create<RoomState>((set, get) => ({
         userName,
       });
 
-      // Force sync on join - improved with started_at
       if (roomData.current_song) {
-        const { setCurrentSong, setIsPlaying, setCurrentTime } = usePlayerStore.getState();
+        const playerStore = usePlayerStore.getState();
+        const { setCurrentSong, setIsPlaying, setCurrentTime } = playerStore;
         setCurrentSong(roomData.current_song);
         
-        const playerStore = usePlayerStore.getState();
         let newTime = roomData.playback_time;
         if (roomData.is_playing && roomData.started_at) {
           const elapsed = (playerStore.now() - Number(roomData.started_at)) / 1000;
           newTime = elapsed;
-        } else if (!roomData.is_playing && roomData.started_at) {
-          const elapsed = Number(roomData.started_at);
-          newTime = elapsed;
         }
-        
         setCurrentTime(newTime);
         setIsPlaying(roomData.is_playing);
       }
@@ -248,12 +227,12 @@ export const useRoomStore = create<RoomState>((set, get) => ({
   
   playTrack: async (song, time, isPlaying) => {
     const { currentRoom, isHost, channel } = get();
-    const playerStore = usePlayerStore.getState();
     if (!currentRoom || !isHost) return;
 
+    const playerStore = usePlayerStore.getState();
     const nowMs = playerStore.now();
     const nowIso = new Date().toISOString();
-    const roomState: Partial<Room> = {
+    const roomState: any = {
       current_song: song,
       is_playing: isPlaying,
       playback_time: time,
@@ -286,6 +265,19 @@ export const useRoomStore = create<RoomState>((set, get) => ({
     });
   },
   
+  setPartyMode: (enabled) => {
+    const { currentRoom, isHost } = get();
+    if (!currentRoom || !isHost) return;
+    supabase.from('rooms').update({ party_mode: enabled }).eq('id', currentRoom.id);
+  },
+  
+  emitBeatDrop: (time) => {
+    const { currentRoom, channel } = get();
+    if (channel) {
+      channel.send({ type: 'broadcast', event: 'beat_drop', payload: { time } });
+    }
+  },
+  
   sendMessage: async (message) => {
     const { currentRoom, userName, channel } = get();
     if (!currentRoom || !message.trim() || !channel) return;
@@ -307,7 +299,6 @@ export const useRoomStore = create<RoomState>((set, get) => ({
   },
 
   voteSong: async (requestId, vote) => {
-    // This would typically be an RPC call to prevent cheating
     const { songRequests, userId } = get();
     const request = songRequests.find(r => r.id === requestId);
     if (!request || !userId || request.song_data.voters?.includes(userId)) return;
@@ -338,7 +329,8 @@ export const useRoomStore = create<RoomState>((set, get) => ({
   
   subscribeToRoom: async (roomId) => {
     get().unsubscribe();
-      const [membersRes, messagesRes, requestsRes] = await Promise.all([
+
+    const [membersRes, messagesRes, requestsRes] = await Promise.all([
       supabase.from('room_members').select('*').eq('room_id', roomId),
       supabase.from('room_messages').select('*').eq('room_id', roomId).order('created_at'),
       supabase.from('song_requests').select('*').eq('room_id', roomId).order('created_at'),
@@ -355,21 +347,20 @@ export const useRoomStore = create<RoomState>((set, get) => ({
     channel
       .on('presence', { event: 'sync' }, () => {
         const presenceState = channel.presenceState();
-        // This is a simple way to update members from presence. A DB sync is more robust.
         const members = Object.values(presenceState).map((p: any) => ({
-          user_id: p.user_id, // You'll need to pass user_id in track()
+          user_id: p.user_id,
           user_name: p.user_name,
           joined_at: new Date().toISOString(),
         }));
         set({ members });
       })
       .on('broadcast', { event: 'sync_play' }, ({ payload }) => {
-        const { setCurrentSong, setIsPlaying, setCurrentTime } = usePlayerStore.getState();
+        const playerStore = usePlayerStore.getState();
+        const { setCurrentSong, setIsPlaying, setCurrentTime } = playerStore;
         if (!payload.track) return;
         
         setCurrentSong(payload.track);
         
-        const playerStore = usePlayerStore.getState();
         let newTime = payload.currentTime || 0;
         if (payload.is_playing && payload.startedAt) {
           const elapsed = (playerStore.now() - Number(payload.startedAt)) / 1000;
@@ -380,21 +371,29 @@ export const useRoomStore = create<RoomState>((set, get) => ({
         setIsPlaying(payload.is_playing);
       })
       .on('broadcast', { event: 'sync_time' }, ({ payload }) => {
-        const { currentTime: localTime } = usePlayerStore.getState();
+        const playerStore = usePlayerStore.getState();
+        const { currentTime: localTime } = playerStore;
         if (Math.abs(localTime - payload.currentTime) > 1) {
-          usePlayerStore.getState().setCurrentTime(payload.currentTime);
+          playerStore.setCurrentTime(payload.currentTime);
         }
       })
       .on('broadcast', { event: 'song_request' }, ({ payload }) => {
-        set(state => ({ songRequests: [...state.songRequests, { ...payload, id: crypto.randomUUID(), created_at: new Date().toISOString() }] }));
+        set(state => ({ songRequests: [...state.songRequests, { 
+          ...payload, 
+          id: crypto.randomUUID(), 
+          created_at: new Date().toISOString() 
+        }] }));
       })
       .on('broadcast', { event: 'message' }, ({ payload }) => {
-        set(state => ({ messages: [...state.messages, { ...payload, id: crypto.randomUUID(), created_at: new Date().toISOString() }] }));
+        set(state => ({ messages: [...state.messages, { 
+          ...payload, 
+          id: crypto.randomUUID(), 
+          created_at: new Date().toISOString() 
+        }] }));
       })
       .on('broadcast', { event: 'room_ended' }, () => {
         get().unsubscribe();
         set({ currentRoom: null, members: [], messages: [], songRequests: [], isHost: false });
-        // Optionally, navigate the user away or show a modal
       })
       .subscribe(async (status) => {
         if (status === 'SUBSCRIBED') {
