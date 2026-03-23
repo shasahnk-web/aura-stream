@@ -40,17 +40,20 @@ export default function MusicPlayer() {
 
   const [nowPlayingOpen, setNowPlayingOpen] = useState(false);
 
-  // Load song and sync time
+  // Load song and sync time + drift correction
   useEffect(() => {
     const audio = audioRef.current;
     if (!audio || !currentSong) return;
     
     if (audio.src !== currentSong.url) {
       audio.src = currentSong.url;
+      audio.preload = 'auto';
+      audio.crossOrigin = 'anonymous';
     }
     
-    // Sync currentTime from the store
-    if (Math.abs(audio.currentTime - currentTime) > 1) {
+    // Sync audio to store time (all clients)
+    const drift = Math.abs(audio.currentTime - currentTime);
+    if (drift > 0.5) {
       audio.currentTime = currentTime;
     }
 
@@ -63,12 +66,37 @@ export default function MusicPlayer() {
     }
   }, [currentSong, isPlaying, volume, currentTime]);
 
+// Micro drift correction (<100ms) - all clients
+  useEffect(() => {
+    const playerStore = usePlayerStore.getState();
+    const { currentRoom } = useRoomStore.getState();
+    if (!currentRoom?.current_song || !audioRef.current) return;
+
+    const interval = setInterval(() => {
+      const audio = audioRef.current!;
+      const roomState = currentRoom;
+      let expectedTime = 0;
+      if (roomState.is_playing && roomState.started_at) {
+        expectedTime = (playerStore.now() - Number(roomState.started_at)) / 1000 + 0.05; // Predictive offset
+      } else if (roomState.started_at) {
+        expectedTime = Number(roomState.playback_time);
+      }
+      
+      const diff = audio.currentTime - expectedTime;
+      if (Math.abs(diff) > 0.1) {
+        audio.currentTime = expectedTime;
+      }
+    }, 1000); // Every 1s
+
+    return () => clearInterval(interval);
+  }, []);
+
 
   const onTimeUpdate = useCallback(() => {
-    if (audioRef.current && !isHost) {
+    if (audioRef.current) {
       setCurrentTime(audioRef.current.currentTime);
     }
-  }, [setCurrentTime, isHost]);
+  }, [setCurrentTime]);
 
   const onLoadedMetadata = useCallback(() => {
     if (audioRef.current) setDuration(audioRef.current.duration);

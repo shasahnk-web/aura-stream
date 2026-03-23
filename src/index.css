@@ -445,6 +445,24 @@
       transform: translateY(0);
     }
   }
+
+  .request-box {
+    display: block !important;
+    max-height: 200px;
+    overflow-y: auto;
+  }
+
+  .request-item {
+    animation: fade 0.3s ease;
+  }
+
+  @media (max-width: 768px) {
+    .request-box {
+      position: relative;
+      z-index: 10;
+      padding: 10px;
+    }
+  }
 }
 
 @layer utilities {
