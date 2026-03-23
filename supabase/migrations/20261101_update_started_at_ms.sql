@@ -10,12 +10,8 @@ ADD COLUMN IF NOT EXISTS started_at_ms bigint;
 -- 2. Create index for perf
 CREATE INDEX IF NOT EXISTS idx_rooms_started_at_ms ON public.rooms(started_at_ms) WHERE started_at_ms IS NOT NULL;
 
--- 3. Backfill from old started_at (text ISO) if exists
-UPDATE public.rooms 
-SET started_at_ms = EXTRACT(EPOCH FROM started_at::timestamptz)::bigint * 1000
-WHERE started_at_ms IS NULL 
-AND started_at IS NOT NULL 
-AND started_at != '';
+-- 3. Backfill skipped (no old started_at column)
+-- New systems start with started_at_ms NULL
 
 -- 4. Update app to use started_at_ms (future code uses Number(started_at_ms))
 -- Old clients safe - fallback to text
