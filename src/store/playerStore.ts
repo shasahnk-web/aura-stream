@@ -49,6 +49,8 @@ export const useLikedStore = create<LikedSongsState>((set, get) => ({
 }));
 
 interface PlayerState {
+  timeOffset: number;
+  setTimeOffset: (offset: number) => void;
   currentSong: Song | null;
   queue: Song[];
   isPlaying: boolean;
@@ -58,6 +60,7 @@ interface PlayerState {
   shuffle: boolean;
   repeat: 'off' | 'one' | 'all';
   dominantColor: string | null;
+  now: () => number;
   setCurrentSong: (song: Song) => void;
   setQueue: (songs: Song[]) => void;
   playSongFromQueue: (index: number) => void;
@@ -75,6 +78,7 @@ interface PlayerState {
 }
 
 export const usePlayerStore = create<PlayerState>((set, get) => ({
+  timeOffset: 0,
   currentSong: null,
   queue: [],
   isPlaying: false,
@@ -84,6 +88,8 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
   shuffle: false,
   repeat: 'off',
   dominantColor: null,
+  setTimeOffset: (offset) => set({ timeOffset: offset }),
+  now: () => Date.now() + get().timeOffset,
   setCurrentSong: (song) => set({ currentSong: song, isPlaying: true, currentTime: 0 }),
   setQueue: (songs) => set({ queue: songs }),
   playSongFromQueue: (index) => {

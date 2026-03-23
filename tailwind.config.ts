@@ -161,6 +161,7 @@ export default {
           height: "var(--player-height)",
           zIndex: "200",
         },
+
         ".center-btn": {
           position: "absolute",
           top: "-30px",
