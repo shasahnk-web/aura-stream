@@ -125,14 +125,15 @@ export default function RoomPage() {
       setCurrentSong(song);
       setIsPlaying(true);
       setCurrentTime(0);
-      playTrack(song, 0);
+      playTrack(song, 0, true);
     }
   };
 
   const handleTogglePlay = () => {
     if (isHost && currentSong) {
-      setIsPlaying(!isPlaying);
-      playTrack(currentSong, currentTime);
+      const newIsPlaying = !isPlaying;
+      setIsPlaying(newIsPlaying);
+      playTrack(currentSong, currentTime, newIsPlaying);
     }
   };
   
@@ -276,23 +277,29 @@ export default function RoomPage() {
             </Button>
           </div>
           
-          <ScrollArea className="flex-1 p-4 request-box" ref={requestRef}>
+          <ScrollArea className="flex-1 p-4 request-box [&>div]:!block md:w-full" ref={requestRef}>
             {songRequests.filter(r => r.status === 'pending').length === 0 ? (
               <p className="text-sm text-muted-foreground text-center py-8">No pending requests</p>
             ) : (
               <div className="space-y-3">
                 {songRequests.filter(r => r.status === 'pending').map((request, i) => (
-                  <div key={i} className="p-3 rounded-xl glass request-item">
+                  <motion.div 
+                    key={i} 
+                    className="p-3 rounded-xl glass request-item"
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.3 }}
+                  >
                     <div className="flex items-center gap-3">
-                      <img src={request.track.image} alt={request.track.name} className="w-10 h-10 rounded-lg object-cover" />
+                      <img src={request.song_data.image} alt={request.song_data.name} className="w-10 h-10 rounded-lg object-cover" />
                       <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium text-foreground truncate">{request.track.name}</p>
-                        <small className="text-xs text-muted-foreground truncate">by {request.user}</small>
+                        <p className="text-sm font-medium text-foreground truncate">{request.song_data.name}</p>
+                        <small className="text-xs text-muted-foreground truncate">by {request.requested_by}</small>
                       </div>
                     </div>
                     {isHost && (
                       <div className="flex gap-2 mt-2">
-                        <Button size="sm" className="flex-1" onClick={() => handleAcceptRequest(request as any)}>
+                        <Button size="sm" className="flex-1" onClick={() => handleAcceptRequest(request)}>
                           <Check className="w-3 h-3 mr-1" /> Play
                         </Button>
                         <Button size="sm" variant="outline" onClick={() => updateRequestStatus(request.id, 'rejected')}>
@@ -300,7 +307,7 @@ export default function RoomPage() {
                         </Button>
                       </div>
                     )}
-                  </div>
+                  </motion.div>
                 ))}
               </div>
             )}

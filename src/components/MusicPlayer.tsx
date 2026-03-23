@@ -40,17 +40,20 @@ export default function MusicPlayer() {
 
   const [nowPlayingOpen, setNowPlayingOpen] = useState(false);
 
-  // Load song and sync time
+  // Load song and sync time + drift correction
   useEffect(() => {
     const audio = audioRef.current;
     if (!audio || !currentSong) return;
     
     if (audio.src !== currentSong.url) {
       audio.src = currentSong.url;
+      audio.preload = 'auto';
+      audio.crossOrigin = 'anonymous';
     }
     
-    // Sync currentTime from the store
-    if (Math.abs(audio.currentTime - currentTime) > 1) {
+    // Sync audio to store time (all clients)
+    const drift = Math.abs(audio.currentTime - currentTime);
+    if (drift > 0.5) {
       audio.currentTime = currentTime;
     }
 
@@ -63,12 +66,37 @@ export default function MusicPlayer() {
     }
   }, [currentSong, isPlaying, volume, currentTime]);
 
+  // Client-side drift correction interval (all clients)
+  useEffect(() => {
+    const { currentRoom } = useRoomStore.getState();
+    if (!currentRoom?.current_song || !audioRef.current) return;
+
+    const interval = setInterval(() => {
+      const audio = audioRef.current!;
+      const roomState = currentRoom;
+      
+      let expectedTime = 0;
+      if (roomState.is_playing && roomState.started_at) {
+        expectedTime = (Date.now() - new Date(roomState.started_at).getTime()) / 1000;
+      } else if (roomState.started_at && roomState.updated_at) {
+        expectedTime = (new Date(roomState.updated_at).getTime() - new Date(roomState.started_at).getTime()) / 1000;
+      }
+      
+      const drift = Math.abs(audio.currentTime - expectedTime);
+      if (drift > 0.5) {
+        audio.currentTime = expectedTime;
+      }
+    }, 2000); // Every 2s
+
+    return () => clearInterval(interval);
+  }, []);
+
 
   const onTimeUpdate = useCallback(() => {
-    if (audioRef.current && !isHost) {
+    if (audioRef.current) {
       setCurrentTime(audioRef.current.currentTime);
     }
-  }, [setCurrentTime, isHost]);
+  }, [setCurrentTime]);
 
   const onLoadedMetadata = useCallback(() => {
     if (audioRef.current) setDuration(audioRef.current.duration);

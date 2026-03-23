@@ -32,6 +32,7 @@ export interface Room {
   is_playing: boolean;
   playback_time: number;
   updated_at: string; // ISO string
+  started_at?: string | null;
   party_mode?: boolean;
   last_drop_at?: number;
 }
@@ -54,7 +55,7 @@ interface RoomState {
   endRoom: (roomId: string) => Promise<{ success: boolean; error?: string }>;  
   
   // Host controls
-  playTrack: (song: Song, time: number) => Promise<void>;
+  playTrack: (song: Song, time: number, isPlaying: boolean) => Promise<void>;
   syncTime: (time: number) => Promise<void>;
   setPartyMode: (enabled: boolean) => Promise<void>;
   emitBeatDrop: (time: number) => Promise<void>;
@@ -171,18 +172,22 @@ export const useRoomStore = create<RoomState>((set, get) => ({
         userName,
       });
 
-      // Force sync on join
+      // Force sync on join - improved with started_at
       if (roomData.current_song) {
         const { setCurrentSong, setIsPlaying, setCurrentTime } = usePlayerStore.getState();
         setCurrentSong(roomData.current_song);
-
-        const delay = (Date.now() - new Date(roomData.updated_at).getTime()) / 1000;
-        const newTime = roomData.playback_time + delay;
-        setCurrentTime(newTime);
         
-        if (roomData.is_playing) {
-          setIsPlaying(true);
+        let newTime = roomData.playback_time;
+        if (roomData.is_playing && roomData.started_at) {
+          const elapsed = (Date.now() - new Date(roomData.started_at).getTime()) / 1000;
+          newTime = elapsed;
+        } else if (!roomData.is_playing && roomData.started_at) {
+          const elapsed = (new Date(roomData.updated_at).getTime() - new Date(roomData.started_at).getTime()) / 1000;
+          newTime = elapsed;
         }
+        
+        setCurrentTime(newTime);
+        setIsPlaying(roomData.is_playing);
       }
       
       await get().subscribeToRoom(finalRoomId);
@@ -229,23 +234,37 @@ export const useRoomStore = create<RoomState>((set, get) => ({
     return { success: true };
   },
   
-  playTrack: async (song, time) => {
+  playTrack: async (song, time, isPlaying) => {
     const { currentRoom, isHost, channel } = get();
     if (!currentRoom || !isHost) return;
 
-    const roomState = {
+    const now = new Date().toISOString();
+    const roomState: Partial<Room> = {
       current_song: song,
-      is_playing: true,
+      is_playing: isPlaying,
       playback_time: time,
-      updated_at: new Date().toISOString(),
+      updated_at: now,
     };
+
+    // Set started_at when starting playback (reset on pause/seek)
+    if (isPlaying) {
+      roomState.started_at = now;
+      roomState.playback_time = 0; // Reset time on new play
+    } else {
+      roomState.started_at = null;
+    }
 
     await supabase.from('rooms').update(roomState).eq('id', currentRoom.id);
 
     channel?.send({
       type: 'broadcast',
       event: 'sync_play',
-      payload: { ...roomState, track: song, currentTime: time }, // Legacy support
+      payload: { 
+        ...roomState, 
+        track: song, 
+        currentTime: time,
+        started_at: roomState.started_at 
+      }, // Include started_at
     });
   },
 
@@ -343,10 +362,14 @@ export const useRoomStore = create<RoomState>((set, get) => ({
         
         setCurrentSong(payload.track);
         
-        const delay = (Date.now() - new Date(payload.updated_at).getTime()) / 1000;
-        const newTime = payload.currentTime + delay;
+        let newTime = payload.currentTime || 0;
+        if (payload.is_playing && payload.started_at) {
+          const elapsed = (Date.now() - new Date(payload.started_at).getTime()) / 1000;
+          newTime = elapsed;
+        }
+        
         setCurrentTime(newTime);
-        setIsPlaying(true);
+        setIsPlaying(payload.is_playing);
       })
       .on('broadcast', { event: 'sync_time' }, ({ payload }) => {
         const { currentTime: localTime } = usePlayerStore.getState();
