@@ -19,8 +19,7 @@ export default function MusicPlayer() {
   const audioRef = useRef<HTMLAudioElement>(null);
   const {
     currentSong, isPlaying, volume, currentTime, duration,
-    repeat, togglePlay, setCurrentSong, setCurrentTime, setDuration,
-    setIsPlaying, playNext,
+    repeat, togglePlay, setCurrentTime, setDuration, playNext,
   } = usePlayerStore();
   const { isLiked, toggleLike } = useLikedStore();
   const { isHost, currentRoom, emitBeatDrop } = useRoomStore();
@@ -39,72 +38,56 @@ export default function MusicPlayer() {
     minIntervalMs: 1000,
   });
 
-  // Listener: sync to room state
-  useEffect(() => {
-    if (!currentRoom || isHost) return;
-
-    if (currentRoom.current_song && currentRoom.current_song.id !== currentSong?.id) {
-      setCurrentSong(currentRoom.current_song);
-    }
-
-    setIsPlaying(currentRoom.is_playing);
-
-    if (audioRef.current) {
-      const drift = Math.abs(audioRef.current.currentTime - currentRoom.playback_time);
-      if (drift > 1.0) {
-        audioRef.current.currentTime = currentRoom.playback_time;
-        setCurrentTime(currentRoom.playback_time);
-      }
-    }
-  }, [currentRoom?.current_song?.id, currentRoom?.is_playing, currentRoom?.playback_time, isHost, currentSong?.id, setCurrentSong, setCurrentTime, setIsPlaying]);
-
   const [nowPlayingOpen, setNowPlayingOpen] = useState(false);
 
-  // Load song
+  // Load song and sync time
   useEffect(() => {
     const audio = audioRef.current;
     if (!audio || !currentSong) return;
-    audio.src = currentSong.url;
+    
+    if (audio.src !== currentSong.url) {
+      audio.src = currentSong.url;
+    }
+    
+    // Sync currentTime from the store
+    if (Math.abs(audio.currentTime - currentTime) > 1) {
+      audio.currentTime = currentTime;
+    }
+
     audio.volume = volume;
-    if (isPlaying) audio.play().catch(() => { });
-  }, [currentSong]);
 
-  // Play/pause
-  useEffect(() => {
-    const audio = audioRef.current;
-    if (!audio) return;
-    if (isPlaying) audio.play().catch(() => { });
-    else audio.pause();
-  }, [isPlaying]);
+    if (isPlaying) {
+      audio.play().catch(() => {});
+    } else {
+      audio.pause();
+    }
+  }, [currentSong, isPlaying, volume, currentTime]);
 
-  // Volume
-  useEffect(() => {
-    if (audioRef.current) audioRef.current.volume = volume;
-  }, [volume]);
 
   const onTimeUpdate = useCallback(() => {
-    if (!audioRef.current) return;
-    const current = audioRef.current.currentTime;
-    setCurrentTime(current);
-  }, [setCurrentTime]);
+    if (audioRef.current && !isHost) {
+      setCurrentTime(audioRef.current.currentTime);
+    }
+  }, [setCurrentTime, isHost]);
 
   const onLoadedMetadata = useCallback(() => {
     if (audioRef.current) setDuration(audioRef.current.duration);
   }, [setDuration]);
 
   const onEnded = useCallback(() => {
-    if (audioRef.current) audioRef.current.volume = volume;
     if (repeat === 'one' && audioRef.current) {
       audioRef.current.currentTime = 0;
       audioRef.current.play();
-    } else {
+    } else if (isHost) {
       playNext();
     }
-  }, [repeat, playNext, volume]);
+  }, [repeat, playNext, isHost]);
 
-  const handleNowPlayingSeek = (time: number) => {
-    if (audioRef.current) audioRef.current.currentTime = time;
-    setCurrentTime(time);
+  const handleSeek = (time: number) => {
+    if (audioRef.current && (isHost || !currentRoom)) { // Allow seeking if host or not in a room
+      audioRef.current.currentTime = time;
+      setCurrentTime(time);
+    }
   };
 
   if (!currentSong) return null;
@@ -168,7 +151,7 @@ export default function MusicPlayer() {
         open={nowPlayingOpen}
         onOpenChange={setNowPlayingOpen}
         audioElement={audioRef.current}
-        onSeek={handleNowPlayingSeek}
+        onSeek={handleSeek}
       />
     </>
   );
