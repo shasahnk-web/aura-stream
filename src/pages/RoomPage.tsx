@@ -8,6 +8,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { useRoomStore, SongRequest } from '@/store/roomStore';
 import { useAuthStore } from '@/store/authStore';
 import { usePlayerStore, Song } from '@/store/playerStore';
+import { useTimeSync } from '@/hooks/useTimeSync';
 import { searchSongs } from '@/services/musicApi';
 import { toast } from 'sonner';
 
@@ -30,6 +31,11 @@ export default function RoomPage() {
   const chatEndRef = useRef<HTMLDivElement>(null);
   const requestRef = useRef<HTMLDivElement>(null);
 
+  const { syncTime: syncClock } = useTimeSync();
+  useEffect(() => {
+    syncClock();
+  }, []); 
+
   useEffect(() => {
     if (!roomId || !user) {
       navigate('/together');
@@ -51,11 +57,12 @@ export default function RoomPage() {
     if (!isHost || !currentRoom) return;
     
     const interval = setInterval(() => {
-      syncTime(currentTime);
-    }, 3000); // Continuous sync
+      const playerStore = usePlayerStore.getState();
+      syncTime(playerStore.currentTime);
+    }, 3000);
     
     return () => clearInterval(interval);
-  }, [isHost, currentRoom, currentTime, syncTime]);
+  }, [isHost, currentRoom]);
   
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });

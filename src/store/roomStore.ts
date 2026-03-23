@@ -32,7 +32,7 @@ export interface Room {
   is_playing: boolean;
   playback_time: number;
   updated_at: string; // ISO string
-  started_at?: string | null;
+  started_at?: number | null;
   party_mode?: boolean;
   last_drop_at?: number;
 }
@@ -57,8 +57,19 @@ interface RoomState {
   // Host controls
   playTrack: (song: Song, time: number, isPlaying: boolean) => Promise<void>;
   syncTime: (time: number) => Promise<void>;
-  setPartyMode: (enabled: boolean) => Promise<void>;
+    setPartyMode: (enabled: boolean) => Promise<void>;
   emitBeatDrop: (time: number) => Promise<void>;
+  setPartyMode: (enabled: boolean) => {
+    const { currentRoom, isHost } = get();
+    if (!currentRoom || !isHost) return;
+    supabase.from('rooms').update({ party_mode: enabled }).eq('id', currentRoom.id);
+  },
+  emitBeatDrop: (time: number) => {
+    const { currentRoom, channel } = get();
+    if (channel) {
+      channel.send({ type: 'broadcast', event: 'beat_drop', payload: { time } });
+    }
+  },
   
   // Chat
   sendMessage: (message: string) => Promise<void>;
@@ -177,12 +188,13 @@ export const useRoomStore = create<RoomState>((set, get) => ({
         const { setCurrentSong, setIsPlaying, setCurrentTime } = usePlayerStore.getState();
         setCurrentSong(roomData.current_song);
         
+        const playerStore = usePlayerStore.getState();
         let newTime = roomData.playback_time;
         if (roomData.is_playing && roomData.started_at) {
-          const elapsed = (Date.now() - new Date(roomData.started_at).getTime()) / 1000;
+          const elapsed = (playerStore.now() - Number(roomData.started_at)) / 1000;
           newTime = elapsed;
         } else if (!roomData.is_playing && roomData.started_at) {
-          const elapsed = (new Date(roomData.updated_at).getTime() - new Date(roomData.started_at).getTime()) / 1000;
+          const elapsed = Number(roomData.started_at);
           newTime = elapsed;
         }
         
@@ -236,23 +248,18 @@ export const useRoomStore = create<RoomState>((set, get) => ({
   
   playTrack: async (song, time, isPlaying) => {
     const { currentRoom, isHost, channel } = get();
+    const playerStore = usePlayerStore.getState();
     if (!currentRoom || !isHost) return;
 
-    const now = new Date().toISOString();
+    const nowMs = playerStore.now();
+    const nowIso = new Date().toISOString();
     const roomState: Partial<Room> = {
       current_song: song,
       is_playing: isPlaying,
       playback_time: time,
-      updated_at: now,
+      updated_at: nowIso,
+      started_at: isPlaying ? nowMs : null,
     };
-
-    // Set started_at when starting playback (reset on pause/seek)
-    if (isPlaying) {
-      roomState.started_at = now;
-      roomState.playback_time = 0; // Reset time on new play
-    } else {
-      roomState.started_at = null;
-    }
 
     await supabase.from('rooms').update(roomState).eq('id', currentRoom.id);
 
@@ -263,8 +270,8 @@ export const useRoomStore = create<RoomState>((set, get) => ({
         ...roomState, 
         track: song, 
         currentTime: time,
-        started_at: roomState.started_at 
-      }, // Include started_at
+        startedAt: nowMs 
+      },
     });
   },
 
@@ -331,7 +338,7 @@ export const useRoomStore = create<RoomState>((set, get) => ({
   
   subscribeToRoom: async (roomId) => {
     get().unsubscribe();
-    const {data: membersRes, messagesRes, requestsRes] = await Promise.all([
+      const [membersRes, messagesRes, requestsRes] = await Promise.all([
       supabase.from('room_members').select('*').eq('room_id', roomId),
       supabase.from('room_messages').select('*').eq('room_id', roomId).order('created_at'),
       supabase.from('song_requests').select('*').eq('room_id', roomId).order('created_at'),
@@ -362,9 +369,10 @@ export const useRoomStore = create<RoomState>((set, get) => ({
         
         setCurrentSong(payload.track);
         
+        const playerStore = usePlayerStore.getState();
         let newTime = payload.currentTime || 0;
-        if (payload.is_playing && payload.started_at) {
-          const elapsed = (Date.now() - new Date(payload.started_at).getTime()) / 1000;
+        if (payload.is_playing && payload.startedAt) {
+          const elapsed = (playerStore.now() - Number(payload.startedAt)) / 1000;
           newTime = elapsed;
         }
         

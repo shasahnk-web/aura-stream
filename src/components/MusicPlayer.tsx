@@ -66,27 +66,27 @@ export default function MusicPlayer() {
     }
   }, [currentSong, isPlaying, volume, currentTime]);
 
-  // Client-side drift correction interval (all clients)
+// Micro drift correction (<100ms) - all clients
   useEffect(() => {
+    const playerStore = usePlayerStore.getState();
     const { currentRoom } = useRoomStore.getState();
     if (!currentRoom?.current_song || !audioRef.current) return;
 
     const interval = setInterval(() => {
       const audio = audioRef.current!;
       const roomState = currentRoom;
-      
       let expectedTime = 0;
       if (roomState.is_playing && roomState.started_at) {
-        expectedTime = (Date.now() - new Date(roomState.started_at).getTime()) / 1000;
-      } else if (roomState.started_at && roomState.updated_at) {
-        expectedTime = (new Date(roomState.updated_at).getTime() - new Date(roomState.started_at).getTime()) / 1000;
+        expectedTime = (playerStore.now() - Number(roomState.started_at)) / 1000 + 0.05; // Predictive offset
+      } else if (roomState.started_at) {
+        expectedTime = Number(roomState.playback_time);
       }
       
-      const drift = Math.abs(audio.currentTime - expectedTime);
-      if (drift > 0.5) {
+      const diff = audio.currentTime - expectedTime;
+      if (Math.abs(diff) > 0.1) {
         audio.currentTime = expectedTime;
       }
-    }, 2000); // Every 2s
+    }, 1000); // Every 1s
 
     return () => clearInterval(interval);
   }, []);
