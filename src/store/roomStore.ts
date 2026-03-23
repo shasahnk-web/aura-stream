@@ -331,7 +331,7 @@ export const useRoomStore = create<RoomState>((set, get) => ({
   
   subscribeToRoom: async (roomId) => {
     get().unsubscribe();
-    const {-es, messagesRes, requestsRes] = await Promise.all([
+    const {data: membersRes, messagesRes, requestsRes] = await Promise.all([
       supabase.from('room_members').select('*').eq('room_id', roomId),
       supabase.from('room_messages').select('*').eq('room_id', roomId).order('created_at'),
       supabase.from('song_requests').select('*').eq('room_id', roomId).order('created_at'),
