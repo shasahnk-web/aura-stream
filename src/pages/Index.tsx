@@ -20,8 +20,9 @@ export default function HomePage() {
 
   useEffect(() => {
     if (user) {
-      supabase.from('profiles').select('name').eq('id', user.id).single().then(({ data }) => {
-        if (data?.name) setUserName(data.name);
+      supabase.from('profiles').select('name').eq('id', user.id as any).single().then(({ data }) => {
+        const d = data as any;
+        if (d?.name) setUserName(d.name);
       });
     } else {
       // Fallback to localStorage

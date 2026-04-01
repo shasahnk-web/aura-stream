@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect } from 'react';
 import { Users, UserPlus, Check, X } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { Button } from '@/components/ui/button';
@@ -22,10 +22,7 @@ interface FriendActivity {
   song_data: Song | null;
   action: string;
   updated_at: string;
-  profile?: {
-    name: string;
-    avatar_url: string | null;
-  };
+  profile?: { name: string; avatar_url: string | null };
 }
 
 export default function FriendsPage() {
@@ -41,6 +38,7 @@ export default function FriendsPage() {
       loadFriends();
       loadActivities();
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user]);
   
   const loadFriends = async () => {
@@ -49,22 +47,21 @@ export default function FriendsPage() {
     const { data } = await supabase
       .from('friendships')
       .select('*')
-      .or(`requester_id.eq.${user.id},addressee_id.eq.${user.id}`);
+      .or(`requester_id.eq.${user.id},addressee_id.eq.${user.id}`) as { data: any[] | null };
     
     if (!data) return;
     
-    // Get friend profiles
-    const friendIds = data.map(f => f.requester_id === user.id ? f.addressee_id : f.requester_id);
+    const friendIds = data.map((f: any) => f.requester_id === user.id ? f.addressee_id : f.requester_id);
     const { data: profiles } = await supabase
       .from('profiles')
       .select('id, name, avatar_url')
-      .in('id', friendIds);
+      .in('id', friendIds) as { data: any[] | null };
     
-    const profileMap = new Map(profiles?.map(p => [p.id, p]) || []);
+    const profileMap = new Map((profiles || []).map((p: any) => [p.id, p]));
     
-    const friendList: Friend[] = data.map(f => {
+    const friendList: Friend[] = data.map((f: any) => {
       const friendId = f.requester_id === user.id ? f.addressee_id : f.requester_id;
-      const profile = profileMap.get(friendId);
+      const profile = profileMap.get(friendId) as any;
       return {
         id: friendId,
         name: profile?.name || 'Unknown',
@@ -80,16 +77,15 @@ export default function FriendsPage() {
   const loadActivities = async () => {
     if (!user) return;
     
-    // Get accepted friend IDs
     const { data: friendships } = await supabase
       .from('friendships')
       .select('requester_id, addressee_id')
-      .eq('status', 'accepted')
-      .or(`requester_id.eq.${user.id},addressee_id.eq.${user.id}`);
+      .eq('status', 'accepted' as any)
+      .or(`requester_id.eq.${user.id},addressee_id.eq.${user.id}`) as { data: any[] | null };
     
     if (!friendships || friendships.length === 0) return;
     
-    const friendIds = friendships.map(f => 
+    const friendIds = friendships.map((f: any) =>
       f.requester_id === user.id ? f.addressee_id : f.requester_id
     );
     
@@ -97,21 +93,20 @@ export default function FriendsPage() {
       .from('user_activity')
       .select('*')
       .in('user_id', friendIds)
-      .order('updated_at', { ascending: false });
+      .order('updated_at', { ascending: false }) as { data: any[] | null };
     
     if (!activityData) return;
     
-    // Get profiles for activities
     const { data: profiles } = await supabase
       .from('profiles')
       .select('id, name, avatar_url')
-      .in('id', friendIds);
+      .in('id', friendIds) as { data: any[] | null };
     
-    const profileMap = new Map(profiles?.map(p => [p.id, p]) || []);
+    const profileMap = new Map((profiles || []).map((p: any) => [p.id, p]));
     
-    setActivities(activityData.map(a => ({
+    setActivities(activityData.map((a: any) => ({
       ...a,
-      song_data: a.song_data as unknown as Song | null,
+      song_data: a.song_data as Song | null,
       profile: profileMap.get(a.user_id),
     })));
   };
@@ -129,12 +124,11 @@ export default function FriendsPage() {
     
     setLoading(true);
     
-    // Find user by email
     const { data: targetUser } = await supabase
       .from('profiles')
       .select('id')
-      .eq('email', emailInput.trim().toLowerCase())
-      .maybeSingle();
+      .eq('email', emailInput.trim().toLowerCase() as any)
+      .maybeSingle() as { data: any | null };
     
     if (!targetUser) {
       toast.error('No user found with that email. Make sure they have an account.');
@@ -148,12 +142,11 @@ export default function FriendsPage() {
       return;
     }
     
-    // Check if already friends
     const { data: existing } = await supabase
       .from('friendships')
       .select('id')
       .or(`and(requester_id.eq.${user.id},addressee_id.eq.${targetUser.id}),and(requester_id.eq.${targetUser.id},addressee_id.eq.${user.id})`)
-      .maybeSingle();
+      .maybeSingle() as { data: any | null };
     
     if (existing) {
       toast.error('Friend request already exists');
@@ -164,7 +157,7 @@ export default function FriendsPage() {
     const { error } = await supabase.from('friendships').insert({
       requester_id: user.id,
       addressee_id: targetUser.id,
-    });
+    } as any);
     
     if (error) {
       toast.error('Failed to send request');
@@ -182,9 +175,9 @@ export default function FriendsPage() {
     
     await supabase
       .from('friendships')
-      .update({ status: 'accepted' })
-      .eq('requester_id', friendId)
-      .eq('addressee_id', user.id);
+      .update({ status: 'accepted' } as any)
+      .eq('requester_id', friendId as any)
+      .eq('addressee_id', user.id as any);
     
     toast.success('Friend request accepted!');
     loadFriends();
@@ -194,9 +187,9 @@ export default function FriendsPage() {
   const handleReject = async (friendId: string) => {
     if (!user) return;
     
-    await supabase
+    await (supabase
       .from('friendships')
-      .delete()
+      .delete() as any)
       .or(`and(requester_id.eq.${user.id},addressee_id.eq.${friendId}),and(requester_id.eq.${friendId},addressee_id.eq.${user.id})`);
     
     toast.success('Removed');
