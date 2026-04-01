@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Copy, Users, Send, Music, Play, Pause, SkipForward, Check, X, Search, Power } from 'lucide-react';
+import { ArrowLeft, Copy, Send, Music, Play, Pause, SkipForward, Check, X, Search, Power } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -18,7 +18,7 @@ export default function RoomPage() {
   const { 
     currentRoom, members, messages, songRequests, isHost,
     joinRoom, leaveRoom, sendMessage, requestSong, updateRequestStatus,
-    setPartyMode, endRoom, cursors, sendCursorMove, voteSong, playTrack, syncTime
+    endRoom, voteSong, playTrack, pauseTrack, seekTo, syncTime
   } = useRoomStore();
   const { currentSong, isPlaying, setCurrentSong, setIsPlaying, playNext, currentTime, setCurrentTime } = usePlayerStore();
   
@@ -28,7 +28,6 @@ export default function RoomPage() {
   const [searching, setSearching] = useState(false);
   const [showSearch, setShowSearch] = useState(false);
   const chatEndRef = useRef<HTMLDivElement>(null);
-  const requestRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (!roomId || !user) {
@@ -40,19 +39,20 @@ export default function RoomPage() {
       const storedName = localStorage.getItem('kanako-user-name') || 'Guest';
       joinRoom(roomId, user.id, storedName).then(result => {
         if (!result.success) {
-          toast.error(result.error || 'Room not found or unable to join');
+          toast.error(result.error || 'Room not found');
           navigate('/together');
         }
       });
     }
-  }, [roomId, user, currentRoom, joinRoom, navigate]);
+  }, [roomId, user]);
   
+  // Host periodic sync
   useEffect(() => {
     if (!isHost || !currentRoom) return;
     
     const interval = setInterval(() => {
       syncTime(currentTime);
-    }, 3000); // Continuous sync
+    }, 5000);
     
     return () => clearInterval(interval);
   }, [isHost, currentRoom, currentTime, syncTime]);
@@ -60,25 +60,7 @@ export default function RoomPage() {
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
-  
-  useEffect(() => {
-    if (requestRef.current) {
-      requestRef.current.scrollTop = requestRef.current.scrollHeight;
-    }
-  }, [songRequests]);
 
-  useEffect(() => {
-    let lastEmit = 0;
-    const handleMouseMove = (e: MouseEvent) => {
-      if (Date.now() - lastEmit > 50) {
-        sendCursorMove(e.clientX, e.clientY);
-        lastEmit = Date.now();
-      }
-    };
-    document.addEventListener('mousemove', handleMouseMove);
-    return () => document.removeEventListener('mousemove', handleMouseMove);
-  }, [sendCursorMove]);
-  
   const handleLeave = () => {
     if (user) leaveRoom(user.id);
     navigate('/together');
@@ -87,8 +69,12 @@ export default function RoomPage() {
   const handleEndRoom = async () => {
     if (roomId) {
       const result = await endRoom(roomId);
-      if (result.success) toast.success('Room ended');
-      else toast.error(result.error || 'Failed to end room');
+      if (result.success) {
+        toast.success('Room ended');
+        navigate('/together');
+      } else {
+        toast.error(result.error || 'Failed to end room');
+      }
     }
   };
   
@@ -130,8 +116,12 @@ export default function RoomPage() {
   };
 
   const handleTogglePlay = () => {
-    if (isHost && currentSong) {
-      setIsPlaying(!isPlaying);
+    if (!isHost || !currentSong) return;
+    if (isPlaying) {
+      setIsPlaying(false);
+      pauseTrack();
+    } else {
+      setIsPlaying(true);
       playTrack(currentSong, currentTime);
     }
   };
@@ -150,7 +140,7 @@ export default function RoomPage() {
   }
   
   return (
-    <div className="flex-1 flex flex-col overflow-hidden pb-44 md:pb-36">
+    <div className="flex-1 flex flex-col overflow-hidden pb-36 md:pb-28">
       {/* Header */}
       <header className="glass border-b border-border/50 px-4 py-3 flex items-center justify-between shrink-0">
         <div className="flex items-center gap-3">
@@ -162,9 +152,12 @@ export default function RoomPage() {
             <p className="text-xs text-muted-foreground">{members.length} member(s)</p>
           </div>
         </div>
-        {isHost && (
-          <div className="flex items-center gap-2 ml-4">
-             <Button 
+        <div className="flex items-center gap-2">
+          <Button variant="outline" size="sm" onClick={handleCopyRoomId}>
+            <Copy className="w-4 h-4 mr-1" /> {roomId}
+          </Button>
+          {isHost && (
+            <Button 
               variant="ghost" 
               size="sm" 
               onClick={handleEndRoom}
@@ -172,24 +165,13 @@ export default function RoomPage() {
             >
               <Power className="w-4 h-4 mr-1" /> End
             </Button>
-          </div>
-        )}
+          )}
+        </div>
       </header>
 
-      <div className="flex-1 flex flex-col md:flex-row gap-0 min-w-0 overflow-hidden relative">
+      <div className="flex-1 flex flex-col md:flex-row gap-0 min-w-0 overflow-hidden">
         {/* Main Content Area */}
         <main className="flex-1 flex flex-col min-w-0 overflow-hidden">
-          {/* Room Header */}
-          <div className="room-header p-4 border-b border-border/50 shrink-0 flex items-center justify-between">
-            <div>
-              <h3 className="text-xl font-bold text-text">Room ID: {roomId}</h3>
-            </div>
-            <Button variant="outline" size="sm" onClick={handleCopyRoomId}>
-              <Copy className="w-4 h-4 mr-2" />
-              Copy ID
-            </Button>
-          </div>
-          
           {/* Now Playing */}
           <div className="p-4 border-b border-border/50 shrink-0">
             {currentSong ? (
@@ -205,7 +187,7 @@ export default function RoomPage() {
                       <Button variant="ghost" size="icon" onClick={handleTogglePlay}>
                         {isPlaying ? <Pause className="w-5 h-5" /> : <Play className="w-5 h-5" />}
                       </Button>
-                      <Button variant="ghost" size="icon" onClick={playNext}>
+                      <Button variant="ghost" size="icon" onClick={() => { playNext(); }}>
                         <SkipForward className="w-5 h-5" />
                       </Button>
                     </div>
@@ -218,7 +200,9 @@ export default function RoomPage() {
                     {members.map((member) => (
                       <div key={member.user_id} className="flex items-center gap-2 px-3 py-1 rounded-full bg-secondary/40">
                         <span className="text-xs font-medium truncate max-w-[120px]">{member.user_name}</span>
-                        {member.user_id === currentRoom?.host_id && <span className="text-[10px] px-2 py-0.5 rounded-full bg-amber-400/20 text-amber-200">Host</span>}
+                        {member.user_id === currentRoom?.host_id && (
+                          <span className="text-[10px] px-2 py-0.5 rounded-full bg-amber-400/20 text-amber-200">👑 Host</span>
+                        )}
                       </div>
                     ))}
                   </div>
@@ -240,10 +224,16 @@ export default function RoomPage() {
           {/* Chat Area */}
           <ScrollArea className="flex-1 p-4">
             <div className="space-y-3">
+              {messages.length === 0 && (
+                <p className="text-sm text-muted-foreground text-center py-8">No messages yet. Say hi! 👋</p>
+              )}
               {messages.map((msg, i) => (
-                <div key={i} className="flex gap-2">
+                <div key={msg.id || i} className="flex gap-2">
+                  <div className="w-7 h-7 rounded-full bg-primary/20 flex items-center justify-center shrink-0">
+                    <span className="text-[10px] font-bold text-primary">{msg.user_name?.charAt(0)?.toUpperCase()}</span>
+                  </div>
                   <div>
-                    <p className="text-xs text-muted-foreground">{msg.user_name}</p>
+                    <p className="text-xs text-muted-foreground font-medium">{msg.user_name}</p>
                     <p className="text-sm text-foreground">{msg.message}</p>
                   </div>
                 </div>
@@ -268,31 +258,31 @@ export default function RoomPage() {
         </main>
         
         {/* Sidebar - Song Requests */}
-        <aside className="flex flex-col w-full md:w-80 border-l border-border/50">
+        <aside className="flex flex-col w-full md:w-80 border-l border-border/50 max-h-64 md:max-h-none">
           <div className="p-4 border-b border-border/50 flex items-center justify-between shrink-0">
-            <h3 className="font-semibold text-foreground">Requests</h3>
+            <h3 className="font-semibold text-foreground">Song Requests</h3>
             <Button variant="outline" size="sm" onClick={() => setShowSearch(true)}>
-              <Search className="w-4 h-4 mr-1" /> Add
+              <Search className="w-4 h-4 mr-1" /> {isHost ? 'Search' : 'Request'}
             </Button>
           </div>
           
-          <ScrollArea className="flex-1 p-4 request-box" ref={requestRef}>
+          <ScrollArea className="flex-1 p-4">
             {songRequests.filter(r => r.status === 'pending').length === 0 ? (
               <p className="text-sm text-muted-foreground text-center py-8">No pending requests</p>
             ) : (
               <div className="space-y-3">
-                {songRequests.filter(r => r.status === 'pending').map((request, i) => (
-                  <div key={i} className="p-3 rounded-xl glass request-item">
+                {songRequests.filter(r => r.status === 'pending').map((request) => (
+                  <div key={request.id} className="p-3 rounded-xl glass">
                     <div className="flex items-center gap-3">
-                      <img src={request.track.image} alt={request.track.name} className="w-10 h-10 rounded-lg object-cover" />
+                      <img src={request.song_data.image} alt={request.song_data.name} className="w-10 h-10 rounded-lg object-cover" />
                       <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium text-foreground truncate">{request.track.name}</p>
-                        <small className="text-xs text-muted-foreground truncate">by {request.user}</small>
+                        <p className="text-sm font-medium text-foreground truncate">{request.song_data.name}</p>
+                        <small className="text-xs text-muted-foreground truncate">by {request.requested_by}</small>
                       </div>
                     </div>
                     {isHost && (
                       <div className="flex gap-2 mt-2">
-                        <Button size="sm" className="flex-1" onClick={() => handleAcceptRequest(request as any)}>
+                        <Button size="sm" className="flex-1" onClick={() => handleAcceptRequest(request)}>
                           <Check className="w-3 h-3 mr-1" /> Play
                         </Button>
                         <Button size="sm" variant="outline" onClick={() => updateRequestStatus(request.id, 'rejected')}>
@@ -308,17 +298,12 @@ export default function RoomPage() {
         </aside>
       </div>
       
-      {/* Live Cursors */}
-      {Object.entries(cursors).map(([userId, cursor]) => (
-        userId !== user?.id && <div key={userId} className="fixed pointer-events-none z-[9999]" style={{ transform: `translate(${cursor.x}px, ${cursor.y}px)` }}><span>{cursor.name}</span></div>
-      ))}
-      
       {/* Search Modal */}
       {showSearch && (
         <div className="fixed inset-0 z-50 bg-background/80 backdrop-blur-sm flex items-center justify-center p-4">
           <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="w-full max-w-md bg-card rounded-2xl shadow-2xl overflow-hidden">
             <div className="p-4 border-b border-border/50 flex items-center justify-between">
-              <h3 className="font-semibold">Search Songs</h3>
+              <h3 className="font-semibold">{isHost ? 'Search Songs' : 'Request a Song'}</h3>
               <Button variant="ghost" size="sm" onClick={() => setShowSearch(false)}><X className="w-4 h-4" /></Button>
             </div>
             

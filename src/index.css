@@ -263,18 +263,18 @@
   @media (max-width: 768px) {
     .music-player {
       height: 65px;
-      bottom: 65px;
+      bottom: 75px;
     }
 
     .bottom-nav {
-      height: 55px;
+      height: 65px;
     }
 
     body {
-      padding-bottom: 130px;
+      padding-bottom: 150px;
     }
     .telegram-btn {
-      bottom: 96px;
+      bottom: 150px;
       right: 12px;
     }
   }

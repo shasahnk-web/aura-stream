@@ -154,7 +154,7 @@ export default function FriendsPage() {
       .from('friendships')
       .select('id')
       .or(`and(requester_id.eq.${user.id},addressee_id.eq.${targetUser.id}),and(requester_id.eq.${targetUser.id},addressee_id.eq.${user.id})`)
-      .single();
+      .maybeSingle();
     
     if (existing) {
       toast.error('Friend request already exists');
