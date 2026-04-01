@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Users, Music } from 'lucide-react';
+import { Users } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '@/store/authStore';
 import { supabase } from '@/integrations/supabase/client';

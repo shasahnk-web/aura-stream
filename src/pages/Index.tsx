@@ -7,7 +7,7 @@ import SpotifyRecommendations from '@/components/SpotifyRecommendations';
 import NewReleases from '@/components/NewReleases';
 import AiDjSection from '@/components/AiDjSection';
 import FriendsActivity from '@/components/FriendsActivity';
-import { usePlayerStore, Song } from '@/store/playerStore';
+
 import { motion } from 'framer-motion';
 import { useAutoplay } from '@/hooks/useAutoplay';
 import { useAuthStore } from '@/store/authStore';

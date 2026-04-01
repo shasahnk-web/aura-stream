@@ -253,14 +253,14 @@ export const useRoomStore = create<RoomState>((set, get) => ({
 
     const now = Date.now();
     const roomState = {
-      current_song: song as unknown as Record<string, unknown>,
+      current_song: song as any,
       is_playing: true,
       playback_time: time,
       started_at_ms: now,
       updated_at: new Date().toISOString(),
     };
 
-    await supabase.from('rooms').update(roomState).eq('id', currentRoom.id);
+    await supabase.from('rooms').update(roomState as any).eq('id', currentRoom.id);
 
     set({ currentRoom: { ...currentRoom, ...roomState, current_song: song, is_playing: true, playback_time: time, started_at_ms: now } });
 
