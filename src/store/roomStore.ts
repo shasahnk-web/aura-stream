@@ -31,9 +31,10 @@ export interface Room {
   current_song: Song | null;
   is_playing: boolean;
   playback_time: number;
-  updated_at: string; // ISO string
+  updated_at: string;
   party_mode?: boolean;
   last_drop_at?: number;
+  started_at_ms?: number | null;
 }
 
 interface RoomState {
@@ -55,6 +56,8 @@ interface RoomState {
   
   // Host controls
   playTrack: (song: Song, time: number) => Promise<void>;
+  pauseTrack: () => Promise<void>;
+  seekTo: (time: number) => Promise<void>;
   syncTime: (time: number) => Promise<void>;
   setPartyMode: (enabled: boolean) => Promise<void>;
   emitBeatDrop: (time: number) => Promise<void>;
@@ -97,28 +100,21 @@ export const useRoomStore = create<RoomState>((set, get) => ({
   },
   
   createRoom: async (userId, userName) => {
-    // ... (logic for creating room, unchanged)
     try {
-      let roomId: string;
+      let roomId: string = '';
       let attempts = 0;
       const maxAttempts = 10;
 
-      // Generate unique room ID
       do {
         roomId = generateRoomId();
         attempts++;
-
-        const { data: existing, error: checkError } = await supabase
+        const { data: existing } = await supabase
           .from('rooms')
           .select('id')
           .eq('id', roomId)
           .limit(1);
 
-        if (checkError) {
-          if (!existing || existing.length === 0) break;
-        } else if (!existing || existing.length === 0) {
-          break;
-        }
+        if (!existing || existing.length === 0) break;
       } while (attempts < maxAttempts);
 
       if (attempts >= maxAttempts) {
@@ -126,12 +122,15 @@ export const useRoomStore = create<RoomState>((set, get) => ({
       }
 
       const roomName = `${userName}'s Room`;
-      const initialRoomState: Partial<Room> = {
+      const initialRoomState = {
         id: roomId,
         host_id: userId,
         room_name: roomName,
         updated_at: new Date().toISOString(),
         party_mode: false,
+        is_playing: false,
+        playback_time: 0,
+        current_song: null,
       };
 
       const { error } = await supabase.from('rooms').insert(initialRoomState);
@@ -140,14 +139,16 @@ export const useRoomStore = create<RoomState>((set, get) => ({
       await supabase.from('room_members').insert({ room_id: roomId, user_id: userId, user_name: userName });
       
       set({
-        currentRoom: { ...initialRoomState, current_song: null, is_playing: false, playback_time: 0 } as Room,
+        currentRoom: initialRoomState as Room,
         isHost: true,
         userId,
         userName,
-        songRequests: []
+        songRequests: [],
+        members: [{ user_id: userId, user_name: userName, joined_at: new Date().toISOString() }],
+        messages: [],
       });
 
-      await get().subscribeToRoom(roomId);
+      get().subscribeToRoom(roomId);
       return { id: roomId };
     } catch (error: unknown) {
       return { error: (error as Error)?.message || 'Unknown error' };
@@ -159,33 +160,45 @@ export const useRoomStore = create<RoomState>((set, get) => ({
       const normalizedRoomId = roomId.toUpperCase().trim();
       const finalRoomId = /^\d{4}$/.test(normalizedRoomId) ? `ROOM-${normalizedRoomId}` : normalizedRoomId;
       
-      const { data: roomData, error: roomError } = await supabase.from('rooms').select('*').eq('id', finalRoomId).single();
+      const { data: roomData, error: roomError } = await supabase
+        .from('rooms')
+        .select('*')
+        .eq('id', finalRoomId)
+        .maybeSingle();
+
       if (roomError || !roomData) return { success: false, error: 'Room not found' };
       
-      await supabase.from('room_members').upsert({ room_id: finalRoomId, user_id: userId, user_name: userName }, { onConflict: 'room_id,user_id' });
+      await supabase.from('room_members').upsert(
+        { room_id: finalRoomId, user_id: userId, user_name: userName },
+        { onConflict: 'room_id,user_id' }
+      );
+
+      const roomCast = roomData as unknown as Room;
 
       set({
-        currentRoom: roomData,
-        isHost: roomData.host_id === userId,
+        currentRoom: roomCast,
+        isHost: roomCast.host_id === userId,
         userId,
         userName,
       });
 
-      // Force sync on join
-      if (roomData.current_song) {
+      // Force sync on join — calculate drift from last update
+      if (roomCast.current_song) {
         const { setCurrentSong, setIsPlaying, setCurrentTime } = usePlayerStore.getState();
-        setCurrentSong(roomData.current_song);
+        setCurrentSong(roomCast.current_song);
 
-        const delay = (Date.now() - new Date(roomData.updated_at).getTime()) / 1000;
-        const newTime = roomData.playback_time + delay;
-        setCurrentTime(newTime);
-        
-        if (roomData.is_playing) {
+        if (roomCast.is_playing && roomCast.started_at_ms) {
+          const elapsed = (Date.now() - roomCast.started_at_ms) / 1000;
+          const newTime = roomCast.playback_time + elapsed;
+          setCurrentTime(newTime);
           setIsPlaying(true);
+        } else {
+          setCurrentTime(roomCast.playback_time);
+          setIsPlaying(roomCast.is_playing);
         }
       }
       
-      await get().subscribeToRoom(finalRoomId);
+      get().subscribeToRoom(finalRoomId);
       return { success: true };
     } catch (error: unknown) {
       return { success: false, error: (error as Error)?.message || 'Unknown error' };
@@ -193,13 +206,18 @@ export const useRoomStore = create<RoomState>((set, get) => ({
   },
   
   leaveRoom: async (userId) => {
-    const { currentRoom, isHost, channel } = get();
+    const { currentRoom, isHost } = get();
     if (!currentRoom) return;
 
     await supabase.from('room_members').delete().eq('room_id', currentRoom.id).eq('user_id', userId);
 
     if (isHost) {
-      const { data: members } = await supabase.from('room_members').select('*').eq('room_id', currentRoom.id).order('joined_at');
+      const { data: members } = await supabase
+        .from('room_members')
+        .select('*')
+        .eq('room_id', currentRoom.id)
+        .order('joined_at');
+
       if (members && members.length > 0) {
         await supabase.from('rooms').update({ host_id: members[0].user_id }).eq('id', currentRoom.id);
       } else {
@@ -233,19 +251,66 @@ export const useRoomStore = create<RoomState>((set, get) => ({
     const { currentRoom, isHost, channel } = get();
     if (!currentRoom || !isHost) return;
 
+    const now = Date.now();
     const roomState = {
-      current_song: song,
+      current_song: song as any,
       is_playing: true,
       playback_time: time,
+      started_at_ms: now,
       updated_at: new Date().toISOString(),
     };
 
-    await supabase.from('rooms').update(roomState).eq('id', currentRoom.id);
+    await supabase.from('rooms').update(roomState as any).eq('id', currentRoom.id);
+
+    set({ currentRoom: { ...currentRoom, ...roomState, current_song: song, is_playing: true, playback_time: time, started_at_ms: now } });
 
     channel?.send({
       type: 'broadcast',
       event: 'sync_play',
-      payload: { ...roomState, track: song, currentTime: time }, // Legacy support
+      payload: { song, currentTime: time, started_at_ms: now, is_playing: true },
+    });
+  },
+
+  pauseTrack: async () => {
+    const { currentRoom, isHost, channel } = get();
+    if (!currentRoom || !isHost) return;
+
+    const { currentTime } = usePlayerStore.getState();
+    const roomState = {
+      is_playing: false,
+      playback_time: currentTime,
+      started_at_ms: null,
+      updated_at: new Date().toISOString(),
+    };
+
+    await supabase.from('rooms').update(roomState).eq('id', currentRoom.id);
+    set({ currentRoom: { ...currentRoom, ...roomState, is_playing: false, playback_time: currentTime, started_at_ms: null } });
+
+    channel?.send({
+      type: 'broadcast',
+      event: 'sync_pause',
+      payload: { currentTime },
+    });
+  },
+
+  seekTo: async (time) => {
+    const { currentRoom, isHost, channel } = get();
+    if (!currentRoom || !isHost) return;
+
+    const now = Date.now();
+    const roomState = {
+      playback_time: time,
+      started_at_ms: currentRoom.is_playing ? now : null,
+      updated_at: new Date().toISOString(),
+    };
+
+    await supabase.from('rooms').update(roomState).eq('id', currentRoom.id);
+    set({ currentRoom: { ...currentRoom, ...roomState, playback_time: time, started_at_ms: currentRoom.is_playing ? now : null } });
+
+    channel?.send({
+      type: 'broadcast',
+      event: 'sync_seek',
+      payload: { currentTime: time, started_at_ms: currentRoom.is_playing ? now : null },
     });
   },
 
@@ -256,8 +321,22 @@ export const useRoomStore = create<RoomState>((set, get) => ({
     channel?.send({
       type: 'broadcast',
       event: 'sync_time',
-      payload: { currentTime: time },
+      payload: { currentTime: time, timestamp: Date.now() },
     });
+  },
+
+  setPartyMode: async (enabled) => {
+    const { currentRoom, isHost } = get();
+    if (!currentRoom || !isHost) return;
+    await supabase.from('rooms').update({ party_mode: enabled }).eq('id', currentRoom.id);
+    set({ currentRoom: { ...currentRoom, party_mode: enabled } });
+  },
+
+  emitBeatDrop: async (time) => {
+    const { channel, currentRoom, isHost } = get();
+    if (!channel || !currentRoom || !isHost) return;
+    channel.send({ type: 'broadcast', event: 'beat_drop', payload: { time } });
+    await supabase.from('rooms').update({ last_drop_at: time }).eq('id', currentRoom.id);
   },
   
   sendMessage: async (message) => {
@@ -265,7 +344,11 @@ export const useRoomStore = create<RoomState>((set, get) => ({
     if (!currentRoom || !message.trim() || !channel) return;
 
     const payload = { user_name: userName, message: message.trim() };
-    await channel.send({ type: 'broadcast', event: 'message', payload });
+    channel.send({ type: 'broadcast', event: 'message', payload });
+    // Also add locally for sender
+    set(state => ({
+      messages: [...state.messages, { ...payload, id: crypto.randomUUID(), created_at: new Date().toISOString() }]
+    }));
   },
   
   requestSong: async (song) => {
@@ -273,15 +356,19 @@ export const useRoomStore = create<RoomState>((set, get) => ({
     if (!currentRoom || !channel) return;
 
     const payload = {
-      track: song,
-      user: userName,
+      song_data: song,
+      requested_by: userName,
+      status: 'pending' as const,
     };
     
-    await channel.send({ type: 'broadcast', event: 'song_request', payload });
+    channel.send({ type: 'broadcast', event: 'song_request', payload });
+    // Add locally for sender
+    set(state => ({
+      songRequests: [...state.songRequests, { ...payload, id: crypto.randomUUID(), created_at: new Date().toISOString() }]
+    }));
   },
 
   voteSong: async (requestId, vote) => {
-    // This would typically be an RPC call to prevent cheating
     const { songRequests, userId } = get();
     const request = songRequests.find(r => r.id === requestId);
     if (!request || !userId || request.song_data.voters?.includes(userId)) return;
@@ -289,19 +376,28 @@ export const useRoomStore = create<RoomState>((set, get) => ({
     const currentVotes = request.song_data.votes || 0;
     const updatedVotes = vote === 'up' ? currentVotes + 1 : Math.max(0, currentVotes - 1);
 
-    await supabase.from('song_requests').update({
-      song_data: {
-        ...request.song_data,
-        votes: updatedVotes,
-        voters: [...(request.song_data.voters || []), userId],
-      }
-    }).eq('id', requestId);
+    const updatedSongData = {
+      ...request.song_data,
+      votes: updatedVotes,
+      voters: [...(request.song_data.voters || []), userId],
+    };
+
+    // Update locally
+    set(state => ({
+      songRequests: state.songRequests.map(r =>
+        r.id === requestId ? { ...r, song_data: updatedSongData } : r
+      )
+    }));
   },
   
   updateRequestStatus: async (requestId, status) => {
     const { isHost } = get();
     if (!isHost) return;
-    await supabase.from('song_requests').update({ status }).eq('id', requestId);
+    set(state => ({
+      songRequests: state.songRequests.map(r =>
+        r.id === requestId ? { ...r, status } : r
+      )
+    }));
   },
   
   sendCursorMove: (x, y) => {
@@ -312,7 +408,8 @@ export const useRoomStore = create<RoomState>((set, get) => ({
   
   subscribeToRoom: async (roomId) => {
     get().unsubscribe();
-    const {-es, messagesRes, requestsRes] = await Promise.all([
+
+    const [membersRes, messagesRes, requestsRes] = await Promise.all([
       supabase.from('room_members').select('*').eq('room_id', roomId),
       supabase.from('room_messages').select('*').eq('room_id', roomId).order('created_at'),
       supabase.from('song_requests').select('*').eq('room_id', roomId).order('created_at'),
@@ -321,49 +418,127 @@ export const useRoomStore = create<RoomState>((set, get) => ({
     set({
       members: membersRes.data || [],
       messages: messagesRes.data || [],
-      songRequests: requestsRes.data || [],
+      songRequests: (requestsRes.data || []) as unknown as SongRequest[],
     });
 
-    const channel = supabase.channel(`room:${roomId}`, { config: { presence: { key: get().userName } } });
+    const channel = supabase.channel(`room:${roomId}`, {
+      config: { presence: { key: get().userName || 'guest' } }
+    });
 
     channel
       .on('presence', { event: 'sync' }, () => {
         const presenceState = channel.presenceState();
-        // This is a simple way to update members from presence. A DB sync is more robust.
-        const members = Object.values(presenceState).map((p: any) => ({
-          user_id: p.user_id, // You'll need to pass user_id in track()
-          user_name: p.user_name,
-          joined_at: new Date().toISOString(),
-        }));
-        set({ members });
+        const members: RoomMember[] = [];
+        Object.values(presenceState).forEach((presences: any) => {
+          const arr = Array.isArray(presences) ? presences : [presences];
+          arr.forEach((p: any) => {
+            if (p.user_id) {
+              members.push({
+                user_id: p.user_id,
+                user_name: p.user_name || 'Guest',
+                joined_at: new Date().toISOString(),
+              });
+            }
+          });
+        });
+        if (members.length > 0) set({ members });
       })
       .on('broadcast', { event: 'sync_play' }, ({ payload }) => {
+        if (get().isHost) return; // Host already has the state
         const { setCurrentSong, setIsPlaying, setCurrentTime } = usePlayerStore.getState();
-        if (!payload.track) return;
+        if (!payload.song) return;
         
-        setCurrentSong(payload.track);
+        setCurrentSong(payload.song);
         
-        const delay = (Date.now() - new Date(payload.updated_at).getTime()) / 1000;
-        const newTime = payload.currentTime + delay;
-        setCurrentTime(newTime);
+        if (payload.started_at_ms) {
+          const elapsed = (Date.now() - payload.started_at_ms) / 1000;
+          setCurrentTime(payload.currentTime + elapsed);
+        } else {
+          setCurrentTime(payload.currentTime);
+        }
         setIsPlaying(true);
+
+        set(state => ({
+          currentRoom: state.currentRoom ? {
+            ...state.currentRoom,
+            current_song: payload.song,
+            is_playing: true,
+            playback_time: payload.currentTime,
+            started_at_ms: payload.started_at_ms,
+          } : null
+        }));
+      })
+      .on('broadcast', { event: 'sync_pause' }, ({ payload }) => {
+        if (get().isHost) return;
+        const { setIsPlaying, setCurrentTime } = usePlayerStore.getState();
+        setIsPlaying(false);
+        setCurrentTime(payload.currentTime);
+
+        set(state => ({
+          currentRoom: state.currentRoom ? {
+            ...state.currentRoom,
+            is_playing: false,
+            playback_time: payload.currentTime,
+            started_at_ms: null,
+          } : null
+        }));
+      })
+      .on('broadcast', { event: 'sync_seek' }, ({ payload }) => {
+        if (get().isHost) return;
+        usePlayerStore.getState().setCurrentTime(payload.currentTime);
+
+        set(state => ({
+          currentRoom: state.currentRoom ? {
+            ...state.currentRoom,
+            playback_time: payload.currentTime,
+            started_at_ms: payload.started_at_ms,
+          } : null
+        }));
       })
       .on('broadcast', { event: 'sync_time' }, ({ payload }) => {
+        if (get().isHost) return;
         const { currentTime: localTime } = usePlayerStore.getState();
-        if (Math.abs(localTime - payload.currentTime) > 1) {
-          usePlayerStore.getState().setCurrentTime(payload.currentTime);
+        // Drift correction: only correct if drift > 2 seconds
+        const serverTime = payload.currentTime;
+        const networkDelay = (Date.now() - payload.timestamp) / 1000;
+        const correctedTime = serverTime + networkDelay;
+        
+        if (Math.abs(localTime - correctedTime) > 2) {
+          usePlayerStore.getState().setCurrentTime(correctedTime);
         }
       })
       .on('broadcast', { event: 'song_request' }, ({ payload }) => {
-        set(state => ({ songRequests: [...state.songRequests, { ...payload, id: crypto.randomUUID(), created_at: new Date().toISOString() }] }));
+        // Don't add duplicates from self (we add locally on send)
+        const { userName } = get();
+        if (payload.requested_by === userName) return;
+        set(state => ({
+          songRequests: [...state.songRequests, {
+            ...payload,
+            id: crypto.randomUUID(),
+            created_at: new Date().toISOString()
+          }]
+        }));
       })
       .on('broadcast', { event: 'message' }, ({ payload }) => {
-        set(state => ({ messages: [...state.messages, { ...payload, id: crypto.randomUUID(), created_at: new Date().toISOString() }] }));
+        // Don't add duplicates from self
+        const { userName } = get();
+        if (payload.user_name === userName) return;
+        set(state => ({
+          messages: [...state.messages, {
+            ...payload,
+            id: crypto.randomUUID(),
+            created_at: new Date().toISOString()
+          }]
+        }));
       })
       .on('broadcast', { event: 'room_ended' }, () => {
         get().unsubscribe();
         set({ currentRoom: null, members: [], messages: [], songRequests: [], isHost: false });
-        // Optionally, navigate the user away or show a modal
+      })
+      .on('broadcast', { event: 'cursor_move' }, ({ payload }) => {
+        set(state => ({
+          cursors: { ...state.cursors, [payload.name]: payload }
+        }));
       })
       .subscribe(async (status) => {
         if (status === 'SUBSCRIBED') {

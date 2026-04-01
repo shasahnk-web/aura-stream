@@ -7,7 +7,7 @@ import SpotifyRecommendations from '@/components/SpotifyRecommendations';
 import NewReleases from '@/components/NewReleases';
 import AiDjSection from '@/components/AiDjSection';
 import FriendsActivity from '@/components/FriendsActivity';
-import { usePlayerStore, Song } from '@/store/playerStore';
+
 import { motion } from 'framer-motion';
 import { useAutoplay } from '@/hooks/useAutoplay';
 import { useAuthStore } from '@/store/authStore';
@@ -20,8 +20,9 @@ export default function HomePage() {
 
   useEffect(() => {
     if (user) {
-      supabase.from('profiles').select('name').eq('id', user.id).single().then(({ data }) => {
-        if (data?.name) setUserName(data.name);
+      supabase.from('profiles').select('name').eq('id', user.id as any).single().then(({ data }) => {
+        const d = data as any;
+        if (d?.name) setUserName(d.name);
       });
     } else {
       // Fallback to localStorage

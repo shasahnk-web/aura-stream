@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Users, Music } from 'lucide-react';
+import { Users } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '@/store/authStore';
 import { supabase } from '@/integrations/supabase/client';
@@ -25,12 +25,12 @@ export default function FriendsActivity() {
       const { data: friendships } = await supabase
         .from('friendships')
         .select('requester_id, addressee_id')
-        .eq('status', 'accepted')
+        .eq('status', 'accepted' as any)
         .or(`requester_id.eq.${user.id},addressee_id.eq.${user.id}`);
       
       if (!friendships || friendships.length === 0) return;
       
-      const friendIds = friendships.map(f => 
+      const friendIds = (friendships as any[]).map((f: any) => 
         f.requester_id === user.id ? f.addressee_id : f.requester_id
       );
       
@@ -40,13 +40,13 @@ export default function FriendsActivity() {
         supabase.from('profiles').select('id, name, avatar_url').in('id', friendIds),
       ]);
       
-      const profileMap = new Map(profileRes.data?.map(p => [p.id, p]) || []);
+      const profileMap = new Map((profileRes.data as any[] || []).map((p: any) => [p.id, p]));
       
-      const activityList: Activity[] = (activityRes.data || []).map(a => ({
+      const activityList: Activity[] = ((activityRes.data || []) as any[]).map((a: any) => ({
         user_id: a.user_id,
         name: profileMap.get(a.user_id)?.name || 'Unknown',
         avatar_url: profileMap.get(a.user_id)?.avatar_url || null,
-        song: a.song_data as unknown as Song | null,
+        song: a.song_data as Song | null,
       })).filter(a => a.song);
       
       setActivities(activityList.slice(0, 5));
