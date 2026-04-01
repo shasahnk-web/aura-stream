@@ -164,6 +164,7 @@ export type Database = {
           party_mode: boolean
           playback_time: number
           room_name: string
+          started_at_ms: number | null
           updated_at: string
         }
         Insert: {
@@ -176,6 +177,7 @@ export type Database = {
           party_mode?: boolean
           playback_time?: number
           room_name?: string
+          started_at_ms?: number | null
           updated_at?: string
         }
         Update: {
@@ -188,6 +190,7 @@ export type Database = {
           party_mode?: boolean
           playback_time?: number
           room_name?: string
+          started_at_ms?: number | null
           updated_at?: string
         }
         Relationships: []
