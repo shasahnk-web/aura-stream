@@ -135,10 +135,10 @@ export default function FriendsPage() {
       .from('profiles')
       .select('id')
       .eq('email', emailInput.trim().toLowerCase())
-      .single();
+      .maybeSingle();
     
     if (!targetUser) {
-      toast.error('Friend not found');
+      toast.error('No user found with that email. Make sure they have an account.');
       setLoading(false);
       return;
     }
