@@ -221,10 +221,10 @@
 
   .music-player {
     position: fixed;
-    bottom: 80px;
+    bottom: calc(var(--nav-height) + 12px);
     left: 10px;
     right: 10px;
-    height: 70px;
+    height: var(--player-height);
     border-radius: 20px;
     background: rgba(20, 20, 30, 0.85);
     backdrop-filter: blur(25px);
@@ -232,7 +232,7 @@
     align-items: center;
     padding: 10px;
     box-shadow: 0 10px 40px rgba(0, 0, 0, 0.6);
-    z-index: 91;
+    z-index: 200;
   }
 
   .bottom-nav {
