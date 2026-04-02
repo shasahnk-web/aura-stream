@@ -1,4 +1,4 @@
-import { Song, Playlist } from '@/store/playerStore';
+import { Song } from '@/store/playerStore';
 
 const FUNCTION_URL = `https://${import.meta.env.VITE_SUPABASE_PROJECT_ID}.supabase.co/functions/v1/spotify`;
 const ANON_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;

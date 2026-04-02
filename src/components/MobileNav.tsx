@@ -15,7 +15,7 @@ export default function MobileNav() {
   const activeIndex = useMemo(() => navItems.findIndex(item => item.path === location.pathname), [location.pathname]);
 
   return (
-    <nav className="bottom-nav md:hidden" style={{ zIndex: 90 }}>
+    <nav className="bottom-nav md:hidden" style={{ zIndex: 100 }}>
       <div className="flex items-end justify-around w-full h-full px-2 relative">
         {navItems.map((item, index) => {
           const isCenter = index === 2;
