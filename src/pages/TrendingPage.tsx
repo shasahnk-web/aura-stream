@@ -1,8 +1,8 @@
 import { useQuery } from '@tanstack/react-query';
 import { fetchPlaylist } from '@/services/musicApi';
-import { usePlayerStore } from '@/store/playerStore';
+import { usePlayerStore, Song } from '@/store/playerStore';
 import SongCard from '@/components/SongCard';
-import { Play, Shuffle } from 'lucide-react';
+import { Play, Shuffle, Flame } from 'lucide-react';
 import { motion } from 'framer-motion';
 
 const TRENDING_PLAYLISTS = [
