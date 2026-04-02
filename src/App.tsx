@@ -42,11 +42,11 @@ const App = () => (
       <BrowserRouter>
         <AuthInit />
         <DynamicBackground />
-        <div className="flex h-screen w-screen overflow-hidden relative">
+        <div className="flex min-h-screen w-full relative">
           <Sidebar />
-          <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
+          <div className="flex-1 flex flex-col min-w-0">
             <Header />
-            <main className="flex-1 flex flex-col min-w-0 overflow-hidden pb-52 md:pb-44">
+            <main className="flex-1 overflow-y-auto pb-[calc(var(--nav-height)+var(--player-height)+40px)] md:pb-[calc(var(--player-height)+30px)]">
               <ErrorBoundary>
                 <Routes>
                   <Route path="/" element={<Index />} />
@@ -68,15 +68,6 @@ const App = () => (
             </main>
           </div>
           <MusicPlayer />
-          <a
-            href="https://t.me/traboratory"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="telegram-btn fixed right-6 bottom-32 z-[92] hidden md:flex items-center gap-2 rounded-full px-4 py-2.5 bg-[#2A9DFF] text-white text-xs font-medium shadow-xl hover:bg-[#2eb0ff] transition"
-          >
-            <span className="w-3 h-3 rounded-full bg-white" />
-            Join Telegram
-          </a>
           <MobileNav />
         </div>
       </BrowserRouter>
