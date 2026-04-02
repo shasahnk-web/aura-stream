@@ -272,10 +272,6 @@
       --nav-height: 65px;
       --player-height: 70px;
     }
-
-    body {
-      padding-bottom: calc(var(--nav-height) + var(--player-height) + 25px);
-    }
   }
 
   /* Horizontal scroll container */
