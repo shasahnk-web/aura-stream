@@ -125,7 +125,7 @@
     background-attachment: fixed;
     overflow-x: hidden;
     overflow-y: auto;
-    padding-bottom: 160px; /* space for fixed music player */
+    padding-bottom: calc(var(--nav-height) + var(--player-height) + 25px);
   }
 }
 

@@ -12,7 +12,7 @@ const TRENDING_PLAYLISTS = [
 
 export default function TrendingPage() {
   const { setCurrentSong, setQueue } = usePlayerStore();
-  const handlePlaySong = (song: { url?: string }, songs: Array<{ url?: string }>) => {
+  const handlePlaySong = (song: Song, songs: Song[]) => {
     if (!song.url) {
       console.warn('Song has no playable URL:', song);
       return;

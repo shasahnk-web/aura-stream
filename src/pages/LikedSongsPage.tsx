@@ -1,7 +1,7 @@
 import { useLikedStore } from '@/store/playerStore';
 import { usePlayerStore } from '@/store/playerStore';
 import SongCard from '@/components/SongCard';
-import { Play, Shuffle } from 'lucide-react';
+import { Play, Shuffle, Heart } from 'lucide-react';
 import { motion } from 'framer-motion';
 
 export default function LikedSongsPage() {
