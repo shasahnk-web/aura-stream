@@ -125,7 +125,6 @@
     background-attachment: fixed;
     overflow-x: hidden;
     overflow-y: auto;
-    padding-bottom: calc(var(--nav-height) + var(--player-height) + 25px);
   }
 }
 
@@ -221,18 +220,24 @@
 
   .music-player {
     position: fixed;
-    bottom: calc(var(--nav-height) + 12px);
+    bottom: calc(var(--nav-height) + 10px);
     left: 10px;
     right: 10px;
     height: var(--player-height);
     border-radius: 20px;
-    background: rgba(20, 20, 30, 0.85);
+    background: rgba(20, 20, 30, 0.92);
     backdrop-filter: blur(25px);
     display: flex;
     align-items: center;
     padding: 10px;
     box-shadow: 0 10px 40px rgba(0, 0, 0, 0.6);
     z-index: 200;
+  }
+
+  @media (min-width: 769px) {
+    .music-player {
+      bottom: 12px;
+    }
   }
 
   .bottom-nav {
@@ -266,10 +271,6 @@
     :root {
       --nav-height: 65px;
       --player-height: 70px;
-    }
-
-    body {
-      padding-bottom: calc(var(--nav-height) + var(--player-height) + 25px);
     }
   }
 
