@@ -263,21 +263,13 @@
   }
 
   @media (max-width: 768px) {
-    .music-player {
-      height: 65px;
-      bottom: 75px;
-    }
-
-    .bottom-nav {
-      height: 65px;
+    :root {
+      --nav-height: 65px;
+      --player-height: 70px;
     }
 
     body {
-      padding-bottom: 150px;
-    }
-    .telegram-btn {
-      bottom: 150px;
-      right: 12px;
+      padding-bottom: calc(var(--nav-height) + var(--player-height) + 25px);
     }
   }
 
