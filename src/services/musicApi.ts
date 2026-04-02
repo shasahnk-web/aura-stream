@@ -32,7 +32,7 @@ function extractImage(img: Record<string, unknown> | string | undefined): string
   if (!img) return '';
   if (typeof img === 'string') return img;
   if (Array.isArray(img)) {
-    return (img[2] as Record<string, unknown>)?.url || (img[2] as Record<string, unknown>)?.link || (img[1] as Record<string, unknown>)?.url || (img[1] as Record<string, unknown>)?.link || (img[0] as Record<string, unknown>)?.url || (img[0] as Record<string, unknown>)?.link || '';
+    return ((img[2] as Record<string, unknown>)?.url as string) || ((img[2] as Record<string, unknown>)?.link as string) || ((img[1] as Record<string, unknown>)?.url as string) || ((img[1] as Record<string, unknown>)?.link as string) || ((img[0] as Record<string, unknown>)?.url as string) || ((img[0] as Record<string, unknown>)?.link as string) || '';
   }
   return '';
 }
