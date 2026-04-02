@@ -240,12 +240,12 @@
     bottom: 0;
     left: 0;
     right: 0;
-    height: 70px;
+    height: var(--nav-height);
     padding-bottom: env(safe-area-inset-bottom, 0px);
     background: rgba(20, 20, 30, 0.95);
     backdrop-filter: blur(20px);
     box-shadow: 0 -4px 30px rgba(0, 0, 0, 0.5);
-    z-index: 90;
+    z-index: 100;
   }
 
   .nav-item.active {
