@@ -20,12 +20,8 @@ export default function TogetherPage() {
   const [loading, setLoading] = useState(false);
   
   useEffect(() => {
-    try {
-      const stored = localStorage.getItem('kanako-user-name');
-      if (stored) setName(stored);
-    } catch {
-      // localStorage may not be available in some browsers/private modes
-    }
+    const stored = localStorage.getItem('kanako-user-name');
+    if (stored) setName(stored);
   }, []);
   
   const handleNameChange = (value: string) => {
@@ -46,13 +42,13 @@ export default function TogetherPage() {
     }
     
     setLoading(true);
-    const result = await createRoom(user.id, name.trim());
+    const roomId = await createRoom(user.id, name.trim());
     setLoading(false);
-
-    if (result?.id) {
-      navigate(`/room/${result.id}`);
+    
+    if (roomId) {
+      navigate(`/room/${roomId}`);
     } else {
-      toast.error(result?.error || 'Failed to create room');
+      toast.error('Failed to create room');
     }
   };
   
@@ -72,26 +68,19 @@ export default function TogetherPage() {
       return;
     }
     
-    // Validate room ID format
-    const normalizedRoomId = roomIdInput.trim().toUpperCase();
-    if (!/^ROOM-\d{4}$/.test(normalizedRoomId)) {
-      toast.error('Invalid room ID format. Use format: ROOM-1234');
-      return;
-    }
-    
     setLoading(true);
-    const result = await joinRoom(normalizedRoomId, user.id, name.trim());
+    const success = await joinRoom(roomIdInput.trim().toUpperCase(), user.id, name.trim());
     setLoading(false);
     
-    if (result.success) {
-      navigate(`/room/${normalizedRoomId}`);
+    if (success) {
+      navigate(`/room/${roomIdInput.trim().toUpperCase()}`);
     } else {
-      toast.error(result.error || 'Room not found or unable to join');
+      toast.error('Room not found');
     }
   };
   
   return (
-    <div className="flex-1 overflow-y-auto scrollbar-thin pb-52 md:pb-44 px-4 md:px-6 pt-8">
+    <div className="flex-1 overflow-y-auto scrollbar-thin pb-36 md:pb-28 px-4 md:px-6 pt-8">
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
@@ -99,16 +88,8 @@ export default function TogetherPage() {
       >
         {/* Hero */}
         <div className="text-center mb-8">
-          <div className="w-24 h-24 mx-auto mb-4 rounded-2xl shadow-2xl overflow-hidden bg-gradient-to-br from-cyan-400 via-blue-500 to-purple-600 flex items-center justify-center relative">
-            {/* Gradient glow */}
-            <div className="absolute inset-0 opacity-50" style={{
-              background: 'radial-gradient(circle at 50% 50%, rgba(0,255,200,0.4), transparent)',
-            }} />
-            {/* Headphones icon */}
-            <div className="relative z-10 text-5xl animate-bounce">🎧</div>
-            {/* Love hearts */}
-            <div className="absolute top-2 left-2 text-xl opacity-75 animate-pulse">💕</div>
-            <div className="absolute bottom-2 right-2 text-xl opacity-75 animate-pulse" style={{ animationDelay: '0.3s' }}>💕</div>
+          <div className="w-20 h-20 mx-auto mb-4 rounded-full bg-gradient-to-br from-primary to-accent flex items-center justify-center shadow-2xl">
+            <Headphones className="w-10 h-10 text-primary-foreground" />
           </div>
           <h1 className="text-3xl font-bold font-display gradient-text mb-2">Listen Together</h1>
           <p className="text-muted-foreground">Real-time music with friends</p>

@@ -1,77 +1,101 @@
-import { useMemo } from 'react';
-import { NavLink, useLocation } from 'react-router-dom';
-import { Home, Search, Headphones, Library, Settings } from 'lucide-react';
+import { Home, Search, Music, Settings, Headphones } from 'lucide-react';
+import { NavLink } from 'react-router-dom';
 
 const leftItems = [
-  { icon: Home, text: 'Home', path: '/' },
-  { icon: Search, text: 'Search', path: '/search' },
+  { icon: Home, label: 'Home', path: '/' },
+  { icon: Search, label: 'Search', path: '/search' },
 ];
 
 const rightItems = [
-  { icon: Library, text: 'Library', path: '/library' },
-  { icon: Settings, text: 'Settings', path: '/settings' },
+  { icon: Music, label: 'Library', path: '/library' },
+  { icon: Settings, label: 'Settings', path: '/settings' },
 ];
 
 export default function MobileNav() {
-  const { pathname } = useLocation();
-  const isTogetherActive = pathname === '/together' || pathname.startsWith('/room/');
-
   return (
-    <nav className="fixed bottom-0 left-0 right-0 md:hidden z-[100]" style={{ height: 'var(--nav-height)', paddingBottom: 'env(safe-area-inset-bottom, 0px)', background: 'rgba(20, 20, 30, 0.95)', backdropFilter: 'blur(20px)', boxShadow: '0 -4px 30px rgba(0,0,0,0.5)' }}>
-      <div className="flex items-end justify-around w-full h-full relative">
+    <nav
+      className="fixed bottom-0 left-0 right-0 z-[60] md:hidden glass border-t border-border/50"
+      style={{ backdropFilter: 'blur(12px)' }}
+    >
+      <div className="flex items-center justify-between h-16 px-2">
         {/* Left items */}
-        {leftItems.map((item) => {
-          const isActive = pathname === item.path;
-          return (
+        <div className="flex items-center gap-1">
+          {leftItems.map((item) => (
             <NavLink
               key={item.path}
               to={item.path}
-              className={`flex flex-col items-center justify-center gap-0.5 py-2 flex-1 transition-all duration-200 ${
-                isActive ? 'text-primary' : 'text-muted-foreground'
-              }`}
+              className={({ isActive }) =>
+                `flex flex-col items-center gap-1 px-4 py-1 rounded-lg transition-all duration-300 ${
+                  isActive ? 'text-foreground -translate-y-1' : 'text-muted-foreground'
+                }`
+              }
             >
-              <item.icon className="w-5 h-5" />
-              <span className="text-[10px] font-medium">{item.text}</span>
+              {({ isActive }) => (
+                <>
+                  <item.icon
+                    className={`w-[22px] h-[22px] transition-all ${isActive ? 'gradient-text' : ''}`}
+                    style={isActive ? { stroke: 'url(#nav-gradient)' } : {}}
+                  />
+                  <span className="text-[11px] font-medium">{item.label}</span>
+                </>
+              )}
             </NavLink>
-          );
-        })}
-
-        {/* Center spacer + floating button */}
-        <div className="flex-1 relative">
-          <NavLink
-            to="/together"
-            className="absolute left-1/2 -translate-x-1/2 flex flex-col items-center"
-            style={{ bottom: '18px', zIndex: 400 }}
-          >
-            <div
-              className={`w-[62px] h-[62px] rounded-full flex items-center justify-center shadow-xl transition-all duration-300 ${
-                isTogetherActive
-                  ? 'bg-gradient-to-br from-primary to-accent scale-110'
-                  : 'bg-gradient-to-br from-primary/80 to-accent/80'
-              }`}
-              style={{ boxShadow: isTogetherActive ? '0 0 25px rgba(168,85,247,0.7)' : '0 4px 20px rgba(0,0,0,0.4)' }}
-            >
-              <Headphones className="w-6 h-6 text-white" />
-            </div>
-          </NavLink>
+          ))}
         </div>
 
+        {/* Center Together button */}
+        <NavLink
+          to="/together"
+          className={({ isActive }) =>
+            `flex flex-col items-center justify-center w-16 h-16 -mt-6 rounded-full shadow-lg border-4 border-background transition-all ${
+              isActive 
+                ? 'bg-gradient-to-br from-primary to-accent text-primary-foreground' 
+                : 'bg-foreground text-primary'
+            }`
+          }
+        >
+          {({ isActive }) => (
+            <>
+              <Headphones className={`w-6 h-6 ${isActive ? 'text-primary-foreground' : 'text-primary'}`} />
+              <span className={`text-[9px] font-semibold mt-0.5 ${isActive ? 'text-primary-foreground' : 'text-primary'}`}>Together</span>
+            </>
+          )}
+        </NavLink>
+
         {/* Right items */}
-        {rightItems.map((item) => {
-          const isActive = pathname === item.path;
-          return (
+        <div className="flex items-center gap-1">
+          {rightItems.map((item) => (
             <NavLink
               key={item.path}
               to={item.path}
-              className={`flex flex-col items-center justify-center gap-0.5 py-2 flex-1 transition-all duration-200 ${
-                isActive ? 'text-primary' : 'text-muted-foreground'
-              }`}
+              className={({ isActive }) =>
+                `flex flex-col items-center gap-1 px-4 py-1 rounded-lg transition-all duration-300 ${
+                  isActive ? 'text-foreground -translate-y-1' : 'text-muted-foreground'
+                }`
+              }
             >
-              <item.icon className="w-5 h-5" />
-              <span className="text-[10px] font-medium">{item.text}</span>
+              {({ isActive }) => (
+                <>
+                  <item.icon
+                    className={`w-[22px] h-[22px] transition-all ${isActive ? 'gradient-text' : ''}`}
+                    style={isActive ? { stroke: 'url(#nav-gradient)' } : {}}
+                  />
+                  <span className="text-[11px] font-medium">{item.label}</span>
+                </>
+              )}
             </NavLink>
-          );
-        })}
+          ))}
+        </div>
+
+        {/* SVG gradient */}
+        <svg width="0" height="0" className="absolute">
+          <defs>
+            <linearGradient id="nav-gradient" x1="0%" y1="0%" x2="0%" y2="100%">
+              <stop offset="0%" stopColor="hsl(var(--primary))" />
+              <stop offset="100%" stopColor="hsl(var(--accent))" />
+            </linearGradient>
+          </defs>
+        </svg>
       </div>
     </nav>
   );

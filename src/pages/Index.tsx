@@ -7,7 +7,7 @@ import SpotifyRecommendations from '@/components/SpotifyRecommendations';
 import NewReleases from '@/components/NewReleases';
 import AiDjSection from '@/components/AiDjSection';
 import FriendsActivity from '@/components/FriendsActivity';
-
+import { usePlayerStore, Song } from '@/store/playerStore';
 import { motion } from 'framer-motion';
 import { useAutoplay } from '@/hooks/useAutoplay';
 import { useAuthStore } from '@/store/authStore';
@@ -20,9 +20,8 @@ export default function HomePage() {
 
   useEffect(() => {
     if (user) {
-      supabase.from('profiles').select('name').eq('id', user.id as any).single().then(({ data }) => {
-        const d = data as any;
-        if (d?.name) setUserName(d.name);
+      supabase.from('profiles').select('name').eq('id', user.id).single().then(({ data }) => {
+        if (data?.name) setUserName(data.name);
       });
     } else {
       // Fallback to localStorage
@@ -31,37 +30,16 @@ export default function HomePage() {
     }
   }, [user]);
 
-  // Fetch playlists without calling hooks in map - moved to individual queries at hook level
-  const query1 = useQuery({
-    queryKey: ['playlist-meta', FEATURED_PLAYLISTS[0]?.id],
-    queryFn: () => fetchPlaylist(FEATURED_PLAYLISTS[0]?.id || ''),
-    enabled: !!FEATURED_PLAYLISTS[0]
-  });
-  const query2 = useQuery({
-    queryKey: ['playlist-meta', FEATURED_PLAYLISTS[1]?.id],
-    queryFn: () => fetchPlaylist(FEATURED_PLAYLISTS[1]?.id || ''),
-    enabled: !!FEATURED_PLAYLISTS[1]
-  });
-  const query3 = useQuery({
-    queryKey: ['playlist-meta', FEATURED_PLAYLISTS[2]?.id],
-    queryFn: () => fetchPlaylist(FEATURED_PLAYLISTS[2]?.id || ''),
-    enabled: !!FEATURED_PLAYLISTS[2]
-  });
-  const query4 = useQuery({
-    queryKey: ['playlist-meta', FEATURED_PLAYLISTS[3]?.id],
-    queryFn: () => fetchPlaylist(FEATURED_PLAYLISTS[3]?.id || ''),
-    enabled: !!FEATURED_PLAYLISTS[3]
-  });
+  const playlistQueries = FEATURED_PLAYLISTS.map(p => ({
+    ...p,
+    query: useQuery({
+      queryKey: ['playlist-meta', p.id],
+      queryFn: () => fetchPlaylist(p.id),
+    }),
+  }));
 
-  const queries = [query1.data, query2.data, query3.data, query4.data];
-  const loadedPlaylists = FEATURED_PLAYLISTS
-    .map((p, idx) => ({
-      ...p,
-      data: queries[idx]
-    }))
-    .filter(p => p.data);
-  
-  const trendingSongs = loadedPlaylists[0]?.data?.songs?.slice(0, 8) || [];
+  const loadedPlaylists = playlistQueries.filter(p => p.query.data);
+  const trendingSongs = loadedPlaylists[0]?.query.data?.songs?.slice(0, 8) || [];
 
   const greeting = () => {
     const h = new Date().getHours();
@@ -100,10 +78,10 @@ export default function HomePage() {
               <PlaylistCardRef
                 key={p.id}
                 id={p.id}
-                name={p.data!.name}
-                image={p.data!.image}
-                songCount={p.data!.songs.length}
-                songs={p.data!.songs}
+                name={p.query.data!.name}
+                image={p.query.data!.image}
+                songCount={p.query.data!.songs.length}
+                songs={p.query.data!.songs}
               />
             ))}
           </div>
@@ -143,10 +121,10 @@ export default function HomePage() {
               <PlaylistCardRef
                 key={p.id}
                 id={p.id}
-                name={p.data!.name}
-                image={p.data!.image}
-                songCount={p.data!.songs.length}
-                songs={p.data!.songs}
+                name={p.query.data!.name}
+                image={p.query.data!.image}
+                songCount={p.query.data!.songs.length}
+                songs={p.query.data!.songs}
               />
             ))}
           </div>

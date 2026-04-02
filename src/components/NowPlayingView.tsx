@@ -62,7 +62,7 @@ export default function NowPlayingView({ open, onOpenChange, audioElement, onSee
           animate={{ y: 0 }}
           exit={{ y: '100%' }}
           transition={{ type: 'spring', damping: 30, stiffness: 300 }}
-          className="fixed inset-0 z-[20000] flex flex-col overflow-hidden"
+          className="fixed inset-0 z-[100] flex flex-col overflow-hidden"
           style={{
             background: 'linear-gradient(135deg, hsl(240 40% 8%), hsl(250 30% 18%))',
           }}

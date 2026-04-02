@@ -27,7 +27,7 @@ export default function Sidebar() {
       initial={{ x: -80, opacity: 0 }}
       animate={{ x: 0, opacity: 1 }}
       transition={{ duration: 0.4, ease: 'easeOut' }}
-      className="hidden md:flex flex-col w-[240px] h-screen sticky top-0 glass border-r border-border/50 overflow-y-auto overflow-x-hidden"
+      className="hidden md:flex flex-col w-[240px] h-full glass border-r border-border/50 overflow-hidden"
     >
       <div className="p-5 pb-2 flex items-center gap-3">
         <img src={kanakoLogo} alt="KanaKö" className="w-14 h-14 rounded-xl shadow-lg" />

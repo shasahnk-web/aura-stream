@@ -1,8 +1,8 @@
 import { useQuery } from '@tanstack/react-query';
 import { fetchPlaylist } from '@/services/musicApi';
-import { usePlayerStore, Song } from '@/store/playerStore';
+import { usePlayerStore } from '@/store/playerStore';
 import SongCard from '@/components/SongCard';
-import { Play, Shuffle, Flame } from 'lucide-react';
+import { TrendingUp, Play, Shuffle, Flame } from 'lucide-react';
 import { motion } from 'framer-motion';
 
 const TRENDING_PLAYLISTS = [
@@ -12,14 +12,6 @@ const TRENDING_PLAYLISTS = [
 
 export default function TrendingPage() {
   const { setCurrentSong, setQueue } = usePlayerStore();
-  const handlePlaySong = (song: Song, songs: Song[]) => {
-    if (!song.url) {
-      console.warn('Song has no playable URL:', song);
-      return;
-    }
-    setQueue(songs);
-    setCurrentSong(song);
-  };
 
   const mainQuery = useQuery({
     queryKey: ['playlist', TRENDING_PLAYLISTS[0].id],
@@ -46,7 +38,7 @@ export default function TrendingPage() {
   };
 
   return (
-    <div className="flex-1 overflow-y-auto scrollbar-thin pb-52 md:pb-44">
+    <div className="flex-1 overflow-y-auto scrollbar-thin pb-36 md:pb-28">
       {/* Hero */}
       <div className="relative px-4 md:px-8 pt-6 pb-6">
         <div className="absolute inset-0 h-[250px] bg-gradient-to-b from-primary/20 to-transparent" />
@@ -55,16 +47,8 @@ export default function TrendingPage() {
           animate={{ opacity: 1, y: 0 }}
           className="relative flex flex-col sm:flex-row gap-6 items-start sm:items-end"
         >
-          <div className="w-40 h-40 rounded-xl shadow-2xl shrink-0 overflow-hidden bg-gradient-to-br from-orange-500 via-red-500 to-yellow-500 flex items-center justify-center relative">
-            {/* Flame effect background */}
-            <div className="absolute inset-0 animate-pulse opacity-50" style={{
-              background: 'radial-gradient(circle at 50% 30%, rgba(255,200,0,0.8), transparent)',
-            }} />
-            {/* Music notes icon */}
-            <div className="relative text-5xl z-10 animate-bounce" style={{ animationDelay: '0.1s' }}>
-              🔥
-            </div>
-            <div className="absolute top-2 right-4 text-3xl opacity-80">🎵</div>
+          <div className="w-40 h-40 rounded-xl bg-gradient-to-br from-primary to-accent flex items-center justify-center shadow-2xl shrink-0">
+            <Flame className="w-16 h-16 text-primary-foreground" />
           </div>
           <div>
             <p className="text-xs uppercase tracking-wider text-muted-foreground font-semibold mb-1">Charts</p>
@@ -88,7 +72,7 @@ export default function TrendingPage() {
       {/* Top 50 */}
       <div className="px-4 md:px-8 mb-8">
         <div className="flex items-center gap-2 mb-4">
-          <div className="w-5 h-5 flex items-center justify-center text-primary">🔥</div>
+          <TrendingUp className="w-5 h-5 text-primary" />
           <h2 className="text-xl font-bold font-display text-foreground">India Superhits Top 50</h2>
         </div>
         {mainQuery.isLoading ? (
@@ -112,25 +96,9 @@ export default function TrendingPage() {
       {/* Trending Today */}
       {trendingToday.length > 0 && (
         <div className="px-4 md:px-8 mb-8">
-          <div className="flex items-center justify-between gap-2 mb-4">
-            <div className="flex items-center gap-2">
-              <Flame className="w-5 h-5 text-accent" />
-              <h2 className="text-xl font-bold font-display text-foreground">Trending Today</h2>
-            </div>
-            <div className="flex items-center gap-2">
-              <button
-                onClick={() => handlePlayAll(trendingToday)}
-                className="px-4 py-2 rounded-full bg-primary text-primary-foreground font-semibold text-xs hover:opacity-90 transition-opacity flex items-center gap-1"
-              >
-                <Play className="w-4 h-4" /> Play All
-              </button>
-              <button
-                onClick={() => handleShuffle(trendingToday)}
-                className="px-4 py-2 rounded-full glass text-foreground font-semibold text-xs hover:bg-secondary/40 transition-colors flex items-center gap-1"
-              >
-                <Shuffle className="w-4 h-4" /> Shuffle
-              </button>
-            </div>
+          <div className="flex items-center gap-2 mb-4">
+            <Flame className="w-5 h-5 text-accent" />
+            <h2 className="text-xl font-bold font-display text-foreground">Trending Today</h2>
           </div>
           <div className="glass rounded-xl p-2">
             {trendingToday.map((song, i) => (

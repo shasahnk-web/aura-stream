@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { fetchPlaylist } from '@/services/musicApi';
-import { Song, usePlayerStore } from '@/store/playerStore';
+import { Song } from '@/store/playerStore';
 import { Disc3, Play } from 'lucide-react';
 import { motion } from 'framer-motion';
 import PlaylistCard from './PlaylistCard';
@@ -42,9 +42,9 @@ export default function NewReleases() {
             transition={{ delay: i * 0.05 }}
             className="glass rounded-xl p-3 group cursor-pointer hover:bg-secondary/40 transition-all"
             onClick={() => {
-              const { setQueue, setCurrentSong } = usePlayerStore.getState();
-              setQueue(data);
-              setCurrentSong(song);
+              const { usePlayerStore } = require('@/store/playerStore');
+              usePlayerStore.getState().setQueue(data);
+              usePlayerStore.getState().setCurrentSong(song);
             }}
           >
             <div className="relative aspect-square rounded-lg overflow-hidden mb-3">

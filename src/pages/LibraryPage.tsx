@@ -19,14 +19,13 @@ export default function LibraryPage() {
   const { likedSongs } = useLikedStore();
   const { setCurrentSong, setQueue } = usePlayerStore();
 
-  const playlistQueries = FEATURED_PLAYLISTS.map((p) => {
-    // eslint-disable-next-line react-hooks/rules-of-hooks
-    const query = useQuery({
+  const playlistQueries = FEATURED_PLAYLISTS.map(p => ({
+    ...p,
+    query: useQuery({
       queryKey: ['playlist-meta', p.id],
       queryFn: () => fetchPlaylist(p.id),
-    });
-    return { ...p, query };
-  });
+    }),
+  }));
 
   const loadedPlaylists = playlistQueries.filter(p => p.query.data);
 

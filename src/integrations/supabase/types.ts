@@ -160,11 +160,8 @@ export type Database = {
           host_id: string
           id: string
           is_playing: boolean
-          last_drop_at: number | null
-          party_mode: boolean
           playback_time: number
           room_name: string
-          started_at_ms: number | null
           updated_at: string
         }
         Insert: {
@@ -173,11 +170,8 @@ export type Database = {
           host_id: string
           id: string
           is_playing?: boolean
-          last_drop_at?: number | null
-          party_mode?: boolean
           playback_time?: number
           room_name?: string
-          started_at_ms?: number | null
           updated_at?: string
         }
         Update: {
@@ -186,11 +180,8 @@ export type Database = {
           host_id?: string
           id?: string
           is_playing?: boolean
-          last_drop_at?: number | null
-          party_mode?: boolean
           playback_time?: number
           room_name?: string
-          started_at_ms?: number | null
           updated_at?: string
         }
         Relationships: []

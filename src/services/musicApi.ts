@@ -1,4 +1,4 @@
-import { Song } from '@/store/playerStore';
+import { Song, Playlist } from '@/store/playerStore';
 
 const FUNCTION_URL = `https://${import.meta.env.VITE_SUPABASE_PROJECT_ID}.supabase.co/functions/v1/spotify`;
 const ANON_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
@@ -28,61 +28,53 @@ function decodeHtml(html: string): string {
   return txt.value;
 }
 
-function extractImage(img: Record<string, unknown> | string | undefined): string {
+function extractImage(img: any): string {
   if (!img) return '';
   if (typeof img === 'string') return img;
   if (Array.isArray(img)) {
-    return ((img[2] as Record<string, unknown>)?.url as string) || ((img[2] as Record<string, unknown>)?.link as string) || ((img[1] as Record<string, unknown>)?.url as string) || ((img[1] as Record<string, unknown>)?.link as string) || ((img[0] as Record<string, unknown>)?.url as string) || ((img[0] as Record<string, unknown>)?.link as string) || '';
+    return img[2]?.url || img[2]?.link || img[1]?.url || img[1]?.link || img[0]?.url || img[0]?.link || '';
   }
   return '';
 }
 
-function extractArtist(s: Record<string, unknown>): string {
-  if ((s.artists as Record<string, unknown>)?.primary) {
-    return ((s.artists as Record<string, unknown>).primary as Array<{name: string}>).map((a) => a.name).join(', ');
+function extractArtist(s: any): string {
+  if (s.artists?.primary) {
+    return s.artists.primary.map((a: any) => a.name).join(', ');
   }
-  if (s.primaryArtists) return decodeHtml(s.primaryArtists as string);
+  if (s.primaryArtists) return decodeHtml(s.primaryArtists);
   if (s.subtitle) {
-    const parts = (s.subtitle as string).split(' - ');
+    const parts = s.subtitle.split(' - ');
     if (parts.length > 0) return decodeHtml(parts[0]);
   }
-  if ((s.more_info as Record<string, unknown>)?.artistMap) {
-    const artistMap = (s.more_info as Record<string, unknown>).artistMap as Record<string, unknown>;
-    if (artistMap.primary_artists) {
-      return (artistMap.primary_artists as Array<{name: string}>).map((a) => a.name).join(', ');
-    }
+  if (s.more_info?.artistMap?.primary_artists) {
+    return s.more_info.artistMap.primary_artists.map((a: any) => a.name).join(', ');
   }
   return 'Unknown Artist';
 }
 
-function extractUrl(s: Record<string, unknown>): string {
+function extractUrl(s: any): string {
   if (s.downloadUrl) {
     if (Array.isArray(s.downloadUrl)) {
-      const urls = s.downloadUrl as Array<Record<string, unknown>>;
-      return (urls[4]?.url as string) || (urls[3]?.url as string) || (urls[2]?.url as string) ||
-             (urls[4]?.link as string) || (urls[3]?.link as string) || (urls[2]?.link as string) ||
-             (urls[1]?.url as string) || (urls[0]?.url as string) ||
-             (urls[1]?.link as string) || (urls[0]?.link as string) || '';
+      return s.downloadUrl[4]?.url || s.downloadUrl[3]?.url || s.downloadUrl[2]?.url ||
+             s.downloadUrl[4]?.link || s.downloadUrl[3]?.link || s.downloadUrl[2]?.link ||
+             s.downloadUrl[1]?.url || s.downloadUrl[0]?.url ||
+             s.downloadUrl[1]?.link || s.downloadUrl[0]?.link || '';
     }
     if (typeof s.downloadUrl === 'string') return s.downloadUrl;
   }
-  if (s.media_preview_url) return s.media_preview_url as string;
+  if (s.media_preview_url) return s.media_preview_url;
   return '';
 }
 
-function mapSong(s: Record<string, unknown>): Song {
-  const albumObj = s.album as Record<string, unknown> | string | undefined;
-  const moreInfo = s.more_info as Record<string, unknown> | undefined;
-  const albumName = typeof albumObj === 'object' && albumObj ? (albumObj.name as string) || '' : typeof albumObj === 'string' ? albumObj : (moreInfo?.album as string) || '';
-  const durationStr = (s.duration as string) || (moreInfo?.duration as string) || '0';
+function mapSong(s: any): Song {
   return {
-    id: (s.id as string) || String(Math.random()),
-    name: decodeHtml(((s.name || s.song || s.title) as string) || 'Unknown'),
+    id: s.id || String(Math.random()),
+    name: decodeHtml(s.name || s.song || s.title || 'Unknown'),
     artist: extractArtist(s),
-    album: decodeHtml(albumName),
-    image: extractImage(s.image as any),
+    album: decodeHtml(s.album?.name || s.album || s.more_info?.album || ''),
+    image: extractImage(s.image),
     url: extractUrl(s),
-    duration: parseInt(durationStr, 10),
+    duration: parseInt(s.duration || s.more_info?.duration || '0', 10),
   };
 }
 
@@ -112,7 +104,7 @@ export async function searchSongs(query: string): Promise<Song[]> {
   }
 }
 
-export async function fetchHomepage(): Promise<Record<string, unknown>> {
+export async function fetchHomepage(): Promise<any> {
   try {
     const data = await edgeFetch({ action: 'jiosaavn-playlist', id: '1134543272' });
     return data.data || data;

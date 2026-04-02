@@ -61,9 +61,7 @@ async function jiosaavnFetch(path: string) {
       if (res.ok) {
         return res.json();
       }
-    } catch (error) {
-      console.error('Error fetching from endpoint:', error);
-    }
+    } catch {}
   }
   throw new Error('All JioSaavn API endpoints failed');
 }
@@ -77,7 +75,7 @@ Deno.serve(async (req) => {
     const url = new URL(req.url);
     const action = url.searchParams.get('action');
 
-    let result: Record<string, unknown>;
+    let result: any;
 
     switch (action) {
       // ---- JioSaavn proxy endpoints ----

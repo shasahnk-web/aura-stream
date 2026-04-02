@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Moon, Sun, Volume2, Timer, ChevronRight, Music } from 'lucide-react';
+import { Settings, Moon, Sun, Volume2, Timer, ChevronRight, Music } from 'lucide-react';
 import { Switch } from '@/components/ui/switch';
 import { Slider } from '@/components/ui/slider';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
@@ -67,14 +67,9 @@ export default function SettingsPage() {
     <ScrollArea className="flex-1 p-4 md:p-6 pb-32">
       <div className="max-w-2xl mx-auto space-y-6">
         {/* Header */}
-        <div className="flex items-center gap-4 mb-8">
-          <div className="w-20 h-20 rounded-2xl shadow-lg overflow-hidden bg-gradient-to-br from-purple-500 via-pink-500 to-purple-600 flex items-center justify-center relative">
-            {/* Glow effect */}
-            <div className="absolute inset-0 opacity-50" style={{
-              background: 'radial-gradient(circle at 50% 50%, rgba(255,100,200,0.4), transparent)',
-            }} />
-            {/* Settings gear */}
-            <div className="relative z-10 text-4xl animate-spin" style={{ animationDuration: '3s' }}>⚙️</div>
+        <div className="flex items-center gap-3 mb-8">
+          <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-primary to-accent flex items-center justify-center">
+            <Settings className="w-6 h-6 text-primary-foreground" />
           </div>
           <div>
             <h1 className="text-2xl font-bold text-foreground">Settings</h1>

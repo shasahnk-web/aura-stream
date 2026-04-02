@@ -3,7 +3,7 @@ import { fetchPlaylist } from '@/services/musicApi';
 import { usePlayerStore, Song } from '@/store/playerStore';
 import SongCard from '@/components/SongCard';
 import PlaylistCard from '@/components/PlaylistCard';
-import { Play, Shuffle } from 'lucide-react';
+import { Radio, Play, Shuffle } from 'lucide-react';
 import { motion } from 'framer-motion';
 
 const RADIO_STATIONS = [
@@ -16,14 +16,13 @@ const RADIO_STATIONS = [
 export default function RadioPage() {
   const { setCurrentSong, setQueue } = usePlayerStore();
 
-  const stationQueries = RADIO_STATIONS.map((station) => {
-    // eslint-disable-next-line react-hooks/rules-of-hooks
-    const query = useQuery({
+  const stationQueries = RADIO_STATIONS.map(station => ({
+    ...station,
+    query: useQuery({
       queryKey: ['radio-station', station.id],
       queryFn: () => fetchPlaylist(station.id),
-    });
-    return { ...station, query };
-  });
+    }),
+  }));
 
   const handlePlayStation = (songs: Song[]) => {
     if (songs.length) {
@@ -43,21 +42,8 @@ export default function RadioPage() {
           animate={{ opacity: 1, y: 0 }}
           className="relative flex flex-col sm:flex-row gap-6 items-start sm:items-end"
         >
-          <div className="w-40 h-40 rounded-xl shadow-2xl shrink-0 overflow-hidden bg-gradient-to-br from-cyan-400 via-blue-500 to-purple-600 flex items-center justify-center relative">
-            {/* Gradient wave effect */}
-            <div className="absolute inset-0 opacity-50" style={{
-              background: 'linear-gradient(45deg, rgba(0,255,200,0.3), rgba(255,0,200,0.3))',
-            }} />
-            {/* Radio waves */}
-            <div className="relative z-10">
-              <div className="text-4xl">📻</div>
-              <div className="absolute inset-0 animate-pulse" style={{
-                textShadow: '0 0 10px rgba(0,255,200,0.8)',
-              }} />
-            </div>
-            {/* Decorative notes */}
-            <div className="absolute top-3 right-3 text-xl opacity-80">♪</div>
-            <div className="absolute bottom-3 left-3 text-xl opacity-80">♫</div>
+          <div className="w-40 h-40 rounded-xl bg-gradient-to-br from-accent to-primary flex items-center justify-center shadow-2xl shrink-0">
+            <Radio className="w-16 h-16 text-primary-foreground" />
           </div>
           <div>
             <p className="text-xs uppercase tracking-wider text-muted-foreground font-semibold mb-1">Live</p>
@@ -85,7 +71,7 @@ export default function RadioPage() {
                   {station.query.data?.image ? (
                     <img src={station.query.data.image} alt={station.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
                   ) : (
-                    <div className="text-4xl">📻</div>
+                    <Radio className="w-12 h-12 text-primary/60" />
                   )}
                   <div className="absolute inset-0 bg-gradient-to-t from-background/60 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
                   <motion.button

@@ -6,24 +6,16 @@
 
 @layer base {
   :root {
-    --bg: #0b0b0f;
-    --card: rgba(255, 255, 255, 0.05);
-    --glass: rgba(255, 255, 255, 0.08);
-    --primary: #a855f7;
-    --accent: #ec4899;
-    --text: #ffffff;
-    --subtext: #9ca3af;
-    --nav-height: 70px;
-    --player-height: 75px;
-
     --background: 235 25% 11%;
     --foreground: 0 0% 100%;
 
+    --card: 235 20% 14%;
     --card-foreground: 0 0% 100%;
 
     --popover: 235 20% 12%;
     --popover-foreground: 0 0% 100%;
 
+    --primary: 270 76% 53%;
     --primary-foreground: 0 0% 100%;
 
     --secondary: 240 15% 18%;
@@ -32,6 +24,7 @@
     --muted: 240 12% 16%;
     --muted-foreground: 225 15% 63%;
 
+    --accent: 350 100% 71%;
     --accent-foreground: 0 0% 100%;
 
     --destructive: 0 84% 60%;
@@ -46,18 +39,9 @@
     --glass-bg: 0 0% 100% / 0.08;
     --glass-border: 0 0% 100% / 0.1;
     --glass-hover: 0 0% 100% / 0.12;
-    --gradient-primary: linear-gradient(135deg, #a855f7, #ec4899);
-    --gradient-bg: linear-gradient(
-      135deg,
-      hsl(240 40% 8%),
-      hsl(250 30% 18%),
-      hsl(235 25% 12%)
-    );
-    --gradient-card: linear-gradient(
-      135deg,
-      hsl(var(--glass-bg)),
-      hsl(0 0% 100% / 0.02)
-    );
+    --gradient-primary: linear-gradient(135deg, hsl(270 76% 53%), hsl(350 100% 71%));
+    --gradient-bg: linear-gradient(135deg, hsl(240 40% 8%), hsl(250 30% 18%), hsl(235 25% 12%));
+    --gradient-card: linear-gradient(135deg, hsl(var(--glass-bg)), hsl(0 0% 100% / 0.02));
     --shadow-glow: 0 0 40px hsl(270 76% 53% / 0.15);
     --shadow-card: 0 8px 32px hsl(0 0% 0% / 0.3);
 
@@ -69,47 +53,6 @@
     --sidebar-accent-foreground: 0 0% 95%;
     --sidebar-border: 240 10% 20%;
     --sidebar-ring: 270 76% 53%;
-  }
-
-  * {
-    box-sizing: border-box;
-  }
-
-  html {
-    font-size: 16px;
-  }
-
-  body {
-    font-size: 1rem;
-    line-height: 1.5;
-    background-color: var(--bg);
-    color: var(--text);
-  }
-
-  h1 {
-    font-size: 24px;
-  }
-
-  h2 {
-    font-size: 20px;
-  }
-
-  h3 {
-    font-size: 18px;
-  }
-
-  button {
-    min-height: 48px;
-  }
-
-  button:active {
-    transform: scale(0.92);
-  }
-
-  @media (max-width: 768px) {
-    button {
-      min-height: 44px;
-    }
   }
 }
 
@@ -123,17 +66,16 @@
     font-family: 'Poppins', 'Segoe UI', system-ui, sans-serif;
     background: var(--gradient-bg);
     background-attachment: fixed;
-    overflow-x: hidden;
-    overflow-y: auto;
+    overflow: hidden;
   }
 }
 
 @layer components {
   .glass {
-    background: var(--glass);
-    backdrop-filter: blur(20px);
-    border: 1px solid rgba(255, 255, 255, 0.08);
-    border-radius: 16px;
+    background: hsl(var(--glass-bg));
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid hsl(var(--glass-border));
   }
 
   .glass-hover:hover {
@@ -158,8 +100,7 @@
     border-radius: inherit;
     padding: 1px;
     background: var(--gradient-primary);
-    -webkit-mask: linear-gradient(#fff 0 0) content-box,
-      linear-gradient(#fff 0 0);
+    -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
     mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
     -webkit-mask-composite: xor;
     mask-composite: exclude;
@@ -218,62 +159,6 @@
     border-radius: 2px;
   }
 
-  .music-player {
-    position: fixed;
-    bottom: calc(var(--nav-height) + 10px);
-    left: 10px;
-    right: 10px;
-    height: var(--player-height);
-    border-radius: 20px;
-    background: rgba(20, 20, 30, 0.92);
-    backdrop-filter: blur(25px);
-    display: flex;
-    align-items: center;
-    padding: 10px;
-    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.6);
-    z-index: 200;
-  }
-
-  @media (min-width: 769px) {
-    .music-player {
-      bottom: 12px;
-    }
-  }
-
-  .bottom-nav {
-    position: fixed;
-    bottom: 0;
-    left: 0;
-    right: 0;
-    height: var(--nav-height);
-    padding-bottom: env(safe-area-inset-bottom, 0px);
-    background: rgba(20, 20, 30, 0.95);
-    backdrop-filter: blur(20px);
-    box-shadow: 0 -4px 30px rgba(0, 0, 0, 0.5);
-    z-index: 100;
-  }
-
-  .nav-item.active {
-    color: #a855f7;
-    text-shadow: 0 0 10px #a855f7;
-  }
-
-  .telegram-btn {
-    position: fixed;
-    bottom: calc(var(--nav-height) + var(--player-height) + 30px);
-    left: 16px;
-    z-index: 300;
-    min-width: 150px;
-    pointer-events: auto;
-  }
-
-  @media (max-width: 768px) {
-    :root {
-      --nav-height: 65px;
-      --player-height: 70px;
-    }
-  }
-
   /* Horizontal scroll container */
   .horizontal-scroll {
     display: flex;
@@ -287,19 +172,28 @@
     display: none;
   }
 
-  .song-card {
+  /* Song item style matching reference */
+  .song-item {
     display: flex;
     align-items: center;
-    padding: 12px;
-    border-radius: 14px;
+    padding: 12px 15px;
+    border-radius: 12px;
+    background: hsl(var(--glass-bg));
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid hsl(var(--glass-border));
+    transition: all 0.3s ease;
+    cursor: pointer;
     margin-bottom: 10px;
-    background: rgba(255, 255, 255, 0.03);
-    transition: 0.2s;
   }
 
-  .song-card:hover {
-    background: rgba(255, 255, 255, 0.08);
-    transform: scale(1.02);
+  .song-item:hover {
+    background: hsl(var(--glass-hover));
+    transform: translateX(5px);
+  }
+
+  .song-item:last-child {
+    margin-bottom: 0;
   }
 
   /* Playlist card with overlay */
@@ -382,15 +276,9 @@
 
   /* Floating animation */
   @keyframes float {
-    0% {
-      transform: translateY(0px);
-    }
-    50% {
-      transform: translateY(-10px);
-    }
-    100% {
-      transform: translateY(0px);
-    }
+    0% { transform: translateY(0px); }
+    50% { transform: translateY(-10px); }
+    100% { transform: translateY(0px); }
   }
 
   .floating {
@@ -398,12 +286,8 @@
   }
 
   @keyframes spin-slow {
-    from {
-      transform: rotate(0deg);
-    }
-    to {
-      transform: rotate(360deg);
-    }
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
   }
 
   .spinning {
@@ -411,32 +295,12 @@
   }
 
   @keyframes wave {
-    0%,
-    100% {
-      height: 4px;
-    }
-    50% {
-      height: 12px;
-    }
+    0%, 100% { height: 4px; }
+    50% { height: 12px; }
   }
 
   .animate-wave {
     animation: wave 0.8s ease-in-out infinite;
-  }
-
-  .fade-in {
-    animation: fade 0.4s ease;
-  }
-
-  @keyframes fade {
-    from {
-      opacity: 0;
-      transform: translateY(10px);
-    }
-    to {
-      opacity: 1;
-      transform: translateY(0);
-    }
   }
 }
 

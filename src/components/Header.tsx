@@ -16,9 +16,8 @@ export default function Header() {
 
   useEffect(() => {
     if (!user) { setAvatarUrl(''); setName(''); return; }
-    supabase.from('profiles').select('name, avatar_url').eq('id', user.id as any).single().then(({ data }) => {
-      const d = data as any;
-      if (d) { setAvatarUrl(d.avatar_url || ''); setName(d.name || ''); }
+    supabase.from('profiles').select('name, avatar_url').eq('id', user.id).single().then(({ data }) => {
+      if (data) { setAvatarUrl(data.avatar_url || ''); setName(data.name || ''); }
     });
   }, [user]);
 

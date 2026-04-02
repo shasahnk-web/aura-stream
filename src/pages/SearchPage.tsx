@@ -32,9 +32,8 @@ export default function SearchPage() {
 
   const handleInput = (val: string) => {
     setQuery(val);
-    const timerKey = '__searchTimer' as keyof Window;
-    clearTimeout((window[timerKey] as unknown) as NodeJS.Timeout);
-    (window[timerKey] as unknown) = setTimeout(() => setDebouncedQuery(val), 400);
+    clearTimeout((window as any).__searchTimer);
+    (window as any).__searchTimer = setTimeout(() => setDebouncedQuery(val), 400);
   };
 
   return (
