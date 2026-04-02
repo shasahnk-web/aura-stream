@@ -13,6 +13,8 @@
     --accent: #ec4899;
     --text: #ffffff;
     --subtext: #9ca3af;
+    --nav-height: 70px;
+    --player-height: 75px;
 
     --background: 235 25% 11%;
     --foreground: 0 0% 100%;
@@ -123,7 +125,7 @@
     background-attachment: fixed;
     overflow-x: hidden;
     overflow-y: auto;
-    padding-bottom: 160px; /* space for fixed music player */
+    padding-bottom: calc(var(--nav-height) + var(--player-height) + 25px);
   }
 }
 
@@ -219,10 +221,10 @@
 
   .music-player {
     position: fixed;
-    bottom: 80px;
+    bottom: calc(var(--nav-height) + 12px);
     left: 10px;
     right: 10px;
-    height: 70px;
+    height: var(--player-height);
     border-radius: 20px;
     background: rgba(20, 20, 30, 0.85);
     backdrop-filter: blur(25px);
@@ -230,7 +232,7 @@
     align-items: center;
     padding: 10px;
     box-shadow: 0 10px 40px rgba(0, 0, 0, 0.6);
-    z-index: 91;
+    z-index: 200;
   }
 
   .bottom-nav {
@@ -238,12 +240,12 @@
     bottom: 0;
     left: 0;
     right: 0;
-    height: 70px;
+    height: var(--nav-height);
     padding-bottom: env(safe-area-inset-bottom, 0px);
     background: rgba(20, 20, 30, 0.95);
     backdrop-filter: blur(20px);
     box-shadow: 0 -4px 30px rgba(0, 0, 0, 0.5);
-    z-index: 90;
+    z-index: 100;
   }
 
   .nav-item.active {
@@ -253,29 +255,21 @@
 
   .telegram-btn {
     position: fixed;
-    bottom: 104px;
-    right: 18px;
-    z-index: 95;
+    bottom: calc(var(--nav-height) + var(--player-height) + 30px);
+    left: 16px;
+    z-index: 300;
     min-width: 150px;
     pointer-events: auto;
   }
 
   @media (max-width: 768px) {
-    .music-player {
-      height: 65px;
-      bottom: 75px;
-    }
-
-    .bottom-nav {
-      height: 65px;
+    :root {
+      --nav-height: 65px;
+      --player-height: 70px;
     }
 
     body {
-      padding-bottom: 150px;
-    }
-    .telegram-btn {
-      bottom: 150px;
-      right: 12px;
+      padding-bottom: calc(var(--nav-height) + var(--player-height) + 25px);
     }
   }
 

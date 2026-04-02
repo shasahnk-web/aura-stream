@@ -15,7 +15,7 @@ export default function MobileNav() {
   const activeIndex = useMemo(() => navItems.findIndex(item => item.path === location.pathname), [location.pathname]);
 
   return (
-    <nav className="bottom-nav md:hidden" style={{ zIndex: 90 }}>
+    <nav className="bottom-nav md:hidden" style={{ zIndex: 100 }}>
       <div className="flex items-end justify-around w-full h-full px-2 relative">
         {navItems.map((item, index) => {
           const isCenter = index === 2;
@@ -26,17 +26,18 @@ export default function MobileNav() {
               <NavLink
                 key={item.path}
                 to={item.path}
-                className="flex flex-col items-center justify-center relative -mt-7"
+                className="flex flex-col items-center justify-center relative"
+                style={{ position: 'absolute', top: '-30px', left: '50%', transform: 'translateX(-50%)', zIndex: 400 }}
               >
                 <div
-                  className={`w-14 h-14 rounded-full flex items-center justify-center shadow-xl transition-all duration-300 ${
+                  className={`w-[70px] h-[70px] rounded-full flex items-center justify-center shadow-xl transition-all duration-300 ${
                     isActive
                       ? 'bg-gradient-to-br from-primary to-accent scale-110'
                       : 'bg-gradient-to-br from-primary/80 to-accent/80'
                   }`}
-                  style={{ boxShadow: isActive ? '0 0 24px rgba(168,85,247,0.5)' : '0 4px 20px rgba(0,0,0,0.4)' }}
+                  style={{ boxShadow: isActive ? '0 0 25px rgba(168,85,247,0.7)' : '0 4px 20px rgba(0,0,0,0.4)' }}
                 >
-                  <Headphones className="w-6 h-6 text-white" />
+                  <Headphones className="w-7 h-7 text-white" />
                 </div>
               </NavLink>
             );

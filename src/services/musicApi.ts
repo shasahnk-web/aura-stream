@@ -1,4 +1,4 @@
-import { Song, Playlist } from '@/store/playerStore';
+import { Song } from '@/store/playerStore';
 
 const FUNCTION_URL = `https://${import.meta.env.VITE_SUPABASE_PROJECT_ID}.supabase.co/functions/v1/spotify`;
 const ANON_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
@@ -32,7 +32,7 @@ function extractImage(img: Record<string, unknown> | string | undefined): string
   if (!img) return '';
   if (typeof img === 'string') return img;
   if (Array.isArray(img)) {
-    return (img[2] as Record<string, unknown>)?.url || (img[2] as Record<string, unknown>)?.link || (img[1] as Record<string, unknown>)?.url || (img[1] as Record<string, unknown>)?.link || (img[0] as Record<string, unknown>)?.url || (img[0] as Record<string, unknown>)?.link || '';
+    return ((img[2] as Record<string, unknown>)?.url as string) || ((img[2] as Record<string, unknown>)?.link as string) || ((img[1] as Record<string, unknown>)?.url as string) || ((img[1] as Record<string, unknown>)?.link as string) || ((img[0] as Record<string, unknown>)?.url as string) || ((img[0] as Record<string, unknown>)?.link as string) || '';
   }
   return '';
 }
@@ -71,14 +71,18 @@ function extractUrl(s: Record<string, unknown>): string {
 }
 
 function mapSong(s: Record<string, unknown>): Song {
+  const albumObj = s.album as Record<string, unknown> | string | undefined;
+  const moreInfo = s.more_info as Record<string, unknown> | undefined;
+  const albumName = typeof albumObj === 'object' && albumObj ? (albumObj.name as string) || '' : typeof albumObj === 'string' ? albumObj : (moreInfo?.album as string) || '';
+  const durationStr = (s.duration as string) || (moreInfo?.duration as string) || '0';
   return {
-    id: s.id || String(Math.random()),
-    name: decodeHtml(s.name || s.song || s.title || 'Unknown'),
+    id: (s.id as string) || String(Math.random()),
+    name: decodeHtml(((s.name || s.song || s.title) as string) || 'Unknown'),
     artist: extractArtist(s),
-    album: decodeHtml(s.album?.name || s.album || s.more_info?.album || ''),
-    image: extractImage(s.image),
+    album: decodeHtml(albumName),
+    image: extractImage(s.image as any),
     url: extractUrl(s),
-    duration: parseInt(s.duration || s.more_info?.duration || '0', 10),
+    duration: parseInt(durationStr, 10),
   };
 }
 
