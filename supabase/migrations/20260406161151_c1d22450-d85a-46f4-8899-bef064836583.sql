@@ -1,0 +1,1 @@
+ALTER TABLE public.user_activity ADD CONSTRAINT user_activity_user_id_unique UNIQUE (user_id);
