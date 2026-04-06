@@ -29,6 +29,7 @@ export default function MusicPlayer() {
     setIsPlaying, playNext, playPrev, toggleShuffle, toggleRepeat, setVolume
   } = usePlayerStore();
   const { isLiked, toggleLike } = useLikedStore();
+  useActivityTracker();
 
   const [playbackRate, setPlaybackRate] = useState(1);
   const [crossfadeDuration, setCrossfadeDuration] = useState(0);
