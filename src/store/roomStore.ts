@@ -31,6 +31,7 @@ export interface Room {
   current_song: Song | null;
   is_playing: boolean;
   playback_time: number;
+  started_at_ms: number | null;
 }
 
 interface RoomState {
@@ -47,7 +48,11 @@ interface RoomState {
   joinRoom: (roomId: string, userId: string, userName: string) => Promise<boolean>;
   leaveRoom: (userId: string) => Promise<void>;
   
-  // Host controls
+  // Host controls - immediate broadcast
+  broadcastPlay: (song: Song, time: number) => void;
+  broadcastPause: (time: number) => void;
+  broadcastSeek: (time: number) => void;
+  broadcastSongChange: (song: Song) => void;
   updatePlayback: (song: Song | null, isPlaying: boolean, time: number) => Promise<void>;
   
   // Chat
@@ -94,7 +99,6 @@ export const useRoomStore = create<RoomState>((set, get) => ({
       return null;
     }
     
-    // Join as member
     await supabase.from('room_members').insert({
       room_id: roomId,
       user_id: userId,
@@ -109,6 +113,7 @@ export const useRoomStore = create<RoomState>((set, get) => ({
         current_song: null,
         is_playing: false,
         playback_time: 0,
+        started_at_ms: null,
       },
       isHost: true,
       userName,
@@ -119,7 +124,6 @@ export const useRoomStore = create<RoomState>((set, get) => ({
   },
   
   joinRoom: async (roomId, userId, userName) => {
-    // Check if room exists
     const { data: room, error: roomError } = await supabase
       .from('rooms')
       .select('*')
@@ -131,7 +135,6 @@ export const useRoomStore = create<RoomState>((set, get) => ({
       return false;
     }
     
-    // Join as member
     const { error: joinError } = await supabase.from('room_members').upsert({
       room_id: roomId,
       user_id: userId,
@@ -151,6 +154,7 @@ export const useRoomStore = create<RoomState>((set, get) => ({
         current_song: room.current_song as unknown as Song | null,
         is_playing: room.is_playing,
         playback_time: room.playback_time,
+        started_at_ms: room.started_at_ms,
       },
       isHost: room.host_id === userId,
       userName,
@@ -170,9 +174,24 @@ export const useRoomStore = create<RoomState>((set, get) => ({
       .eq('room_id', currentRoom.id)
       .eq('user_id', userId);
     
-    // If host leaves, delete room
     if (isHost) {
-      await supabase.from('rooms').delete().eq('id', currentRoom.id);
+      // Check if other members exist before deleting
+      const { data: remainingMembers } = await supabase
+        .from('room_members')
+        .select('user_id, joined_at')
+        .eq('room_id', currentRoom.id)
+        .order('joined_at', { ascending: true })
+        .limit(1);
+      
+      if (remainingMembers && remainingMembers.length > 0) {
+        // Assign new host to the oldest remaining member
+        await supabase.from('rooms').update({
+          host_id: remainingMembers[0].user_id,
+        }).eq('id', currentRoom.id);
+      } else {
+        // No members left, delete room
+        await supabase.from('rooms').delete().eq('id', currentRoom.id);
+      }
     }
     
     set({
@@ -184,27 +203,110 @@ export const useRoomStore = create<RoomState>((set, get) => ({
     });
   },
   
+  // Immediate broadcast helpers for real-time sync
+  broadcastPlay: (song, time) => {
+    const { channel, currentRoom, isHost } = get();
+    if (!channel || !currentRoom || !isHost) return;
+    const startedAtMs = Date.now() - (time * 1000);
+    channel.send({
+      type: 'broadcast',
+      event: 'playback',
+      payload: { song, isPlaying: true, time, startedAtMs },
+    });
+    // Also persist to DB
+    supabase.from('rooms').update({
+      current_song: song as any,
+      is_playing: true,
+      playback_time: time,
+      started_at_ms: startedAtMs,
+      updated_at: new Date().toISOString(),
+    }).eq('id', currentRoom.id).then(() => {});
+    set({
+      currentRoom: { ...currentRoom, current_song: song, is_playing: true, playback_time: time, started_at_ms: startedAtMs }
+    });
+  },
+  
+  broadcastPause: (time) => {
+    const { channel, currentRoom, isHost } = get();
+    if (!channel || !currentRoom || !isHost) return;
+    channel.send({
+      type: 'broadcast',
+      event: 'playback',
+      payload: { song: currentRoom.current_song, isPlaying: false, time, startedAtMs: null },
+    });
+    supabase.from('rooms').update({
+      is_playing: false,
+      playback_time: time,
+      started_at_ms: null,
+      updated_at: new Date().toISOString(),
+    }).eq('id', currentRoom.id).then(() => {});
+    set({
+      currentRoom: { ...currentRoom, is_playing: false, playback_time: time, started_at_ms: null }
+    });
+  },
+  
+  broadcastSeek: (time) => {
+    const { channel, currentRoom, isHost } = get();
+    if (!channel || !currentRoom || !isHost) return;
+    const startedAtMs = currentRoom.is_playing ? Date.now() - (time * 1000) : null;
+    channel.send({
+      type: 'broadcast',
+      event: 'seek',
+      payload: { time, startedAtMs },
+    });
+    supabase.from('rooms').update({
+      playback_time: time,
+      started_at_ms: startedAtMs,
+      updated_at: new Date().toISOString(),
+    }).eq('id', currentRoom.id).then(() => {});
+    set({
+      currentRoom: { ...currentRoom, playback_time: time, started_at_ms: startedAtMs }
+    });
+  },
+  
+  broadcastSongChange: (song) => {
+    const { channel, currentRoom, isHost } = get();
+    if (!channel || !currentRoom || !isHost) return;
+    const startedAtMs = Date.now();
+    channel.send({
+      type: 'broadcast',
+      event: 'playback',
+      payload: { song, isPlaying: true, time: 0, startedAtMs },
+    });
+    supabase.from('rooms').update({
+      current_song: song as any,
+      is_playing: true,
+      playback_time: 0,
+      started_at_ms: startedAtMs,
+      updated_at: new Date().toISOString(),
+    }).eq('id', currentRoom.id).then(() => {});
+    set({
+      currentRoom: { ...currentRoom, current_song: song, is_playing: true, playback_time: 0, started_at_ms: startedAtMs }
+    });
+  },
+  
   updatePlayback: async (song, isPlaying, time) => {
     const { currentRoom, isHost, channel } = get();
     if (!currentRoom || !isHost) return;
     
-    // Update database
+    const startedAtMs = isPlaying ? Date.now() - (time * 1000) : null;
+    
     await supabase.from('rooms').update({
       current_song: song as any,
       is_playing: isPlaying,
       playback_time: time,
+      started_at_ms: startedAtMs,
       updated_at: new Date().toISOString(),
     }).eq('id', currentRoom.id);
     
-    // Broadcast to all listeners
     channel?.send({
       type: 'broadcast',
       event: 'playback',
-      payload: { song, isPlaying, time },
+      payload: { song, isPlaying, time, startedAtMs },
     });
     
     set({
-      currentRoom: { ...currentRoom, current_song: song, is_playing: isPlaying, playback_time: time }
+      currentRoom: { ...currentRoom, current_song: song, is_playing: isPlaying, playback_time: time, started_at_ms: startedAtMs }
     });
   },
   
@@ -242,7 +344,7 @@ export const useRoomStore = create<RoomState>((set, get) => ({
       config: { presence: { key: get().userName } },
     });
     
-    // Subscribe to playback broadcasts
+    // Playback broadcasts
     channel.on('broadcast', { event: 'playback' }, ({ payload }) => {
       const { currentRoom, isHost } = get();
       if (!currentRoom || isHost) return;
@@ -253,13 +355,27 @@ export const useRoomStore = create<RoomState>((set, get) => ({
           current_song: payload.song,
           is_playing: payload.isPlaying,
           playback_time: payload.time,
+          started_at_ms: payload.startedAtMs ?? null,
         }
       });
     });
     
-    // Subscribe to presence (online members)
+    // Seek broadcasts
+    channel.on('broadcast', { event: 'seek' }, ({ payload }) => {
+      const { currentRoom, isHost } = get();
+      if (!currentRoom || isHost) return;
+      
+      set({
+        currentRoom: {
+          ...currentRoom,
+          playback_time: payload.time,
+          started_at_ms: payload.startedAtMs ?? null,
+        }
+      });
+    });
+    
+    // Presence
     channel.on('presence', { event: 'sync' }, () => {
-      // Refresh members from database
       supabase.from('room_members')
         .select('*')
         .eq('room_id', roomId)
@@ -268,7 +384,7 @@ export const useRoomStore = create<RoomState>((set, get) => ({
         });
     });
     
-    // Subscribe to new messages
+    // Messages & requests via postgres changes
     channel
       .on('postgres_changes', {
         event: 'INSERT',
@@ -303,7 +419,6 @@ export const useRoomStore = create<RoomState>((set, get) => ({
       if (status === 'SUBSCRIBED') {
         await channel.track({ user_name: get().userName });
         
-        // Load initial data
         const [membersRes, messagesRes, requestsRes] = await Promise.all([
           supabase.from('room_members').select('*').eq('room_id', roomId),
           supabase.from('room_messages').select('*').eq('room_id', roomId).order('created_at'),

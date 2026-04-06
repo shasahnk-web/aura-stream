@@ -11,6 +11,7 @@ import SleepTimer from './SleepTimer';
 import PlaybackControls from './PlaybackControls';
 import AudioVisualizer from './AudioVisualizer';
 import NowPlayingView from './NowPlayingView';
+import { useActivityTracker } from '@/hooks/useActivityTracker';
 
 function formatTime(s: number) {
   const m = Math.floor(s / 60);
@@ -28,6 +29,7 @@ export default function MusicPlayer() {
     setIsPlaying, playNext, playPrev, toggleShuffle, toggleRepeat, setVolume
   } = usePlayerStore();
   const { isLiked, toggleLike } = useLikedStore();
+  useActivityTracker();
 
   const [playbackRate, setPlaybackRate] = useState(1);
   const [crossfadeDuration, setCrossfadeDuration] = useState(0);
@@ -160,7 +162,7 @@ export default function MusicPlayer() {
           animate={{ y: 0, opacity: 1 }}
           exit={{ y: 100, opacity: 0 }}
           transition={{ type: 'spring', damping: 25, stiffness: 300 }}
-          className="fixed bottom-16 md:bottom-0 left-0 right-0 z-[55] glass border-t border-border/50"
+          className="fixed left-0 right-0 z-[50] glass border-t border-border/50 bottom-[var(--nav-height,64px)] md:bottom-0"
           style={{ backdropFilter: 'blur(12px)' }}
         >
           {/* Progress bar on top like reference */}
