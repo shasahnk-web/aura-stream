@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Copy, Users, Send, Music, Play, Pause, SkipForward, Check, X, Search } from 'lucide-react';
+import { ArrowLeft, Copy, Users, Send, Music, Play, Pause, SkipForward, Check, X, Search, Wifi } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -17,19 +17,20 @@ export default function RoomPage() {
   const { user } = useAuthStore();
   const { 
     currentRoom, members, messages, songRequests, isHost, userName,
-    joinRoom, leaveRoom, sendMessage, updatePlayback, requestSong, updateRequestStatus 
+    joinRoom, leaveRoom, sendMessage, broadcastPlay, broadcastPause, broadcastSeek, broadcastSongChange,
+    requestSong, updateRequestStatus 
   } = useRoomStore();
-  const { currentSong, isPlaying, setCurrentSong, setIsPlaying, playNext } = usePlayerStore();
+  const { currentSong, isPlaying, setCurrentSong, setIsPlaying, setCurrentTime, playNext } = usePlayerStore();
   
   const [chatInput, setChatInput] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<Song[]>([]);
   const [searching, setSearching] = useState(false);
   const [showSearch, setShowSearch] = useState(false);
+  const [synced, setSynced] = useState(true);
   const chatEndRef = useRef<HTMLDivElement>(null);
-  const audioRef = useRef<HTMLAudioElement | null>(null);
   
-  // Join room on mount if not already joined
+  // Join room on mount
   useEffect(() => {
     if (!roomId || !user) {
       navigate('/together');
@@ -40,32 +41,54 @@ export default function RoomPage() {
       const storedName = localStorage.getItem('kanako-user-name') || 'Guest';
       joinRoom(roomId, user.id, storedName);
     }
-    
-    return () => {
-      // Don't leave on unmount, only on explicit leave
-    };
   }, [roomId, user]);
   
-  // Sync playback for non-hosts
+  // Listener: sync playback from room state (drift correction)
   useEffect(() => {
     if (!currentRoom || isHost) return;
     
+    // Sync song
     if (currentRoom.current_song) {
-      setCurrentSong(currentRoom.current_song);
+      const playerSong = usePlayerStore.getState().currentSong;
+      if (!playerSong || playerSong.id !== currentRoom.current_song.id) {
+        setCurrentSong(currentRoom.current_song);
+      }
     }
+    
+    // Sync play/pause
     setIsPlaying(currentRoom.is_playing);
-  }, [currentRoom?.current_song, currentRoom?.is_playing, isHost]);
+    
+    // Drift correction: calculate expected time from started_at_ms
+    if (currentRoom.is_playing && currentRoom.started_at_ms) {
+      const expectedTime = (Date.now() - currentRoom.started_at_ms) / 1000;
+      const playerTime = usePlayerStore.getState().currentTime;
+      const drift = Math.abs(expectedTime - playerTime);
+      
+      if (drift > 2) {
+        setCurrentTime(expectedTime);
+        setSynced(false);
+        setTimeout(() => setSynced(true), 1000);
+      }
+    } else if (!currentRoom.is_playing) {
+      setCurrentTime(currentRoom.playback_time);
+    }
+  }, [currentRoom?.current_song, currentRoom?.is_playing, currentRoom?.playback_time, currentRoom?.started_at_ms, isHost]);
   
-  // Host broadcasts playback state
+  // Host: periodic sync broadcast every 10s
   useEffect(() => {
     if (!isHost || !currentRoom) return;
     
     const interval = setInterval(() => {
-      updatePlayback(currentSong, isPlaying, 0);
-    }, 5000);
+      const playerState = usePlayerStore.getState();
+      if (playerState.currentSong && playerState.isPlaying) {
+        // Just a light DB update for late joiners
+        const { updatePlayback } = useRoomStore.getState();
+        updatePlayback(playerState.currentSong, playerState.isPlaying, playerState.currentTime);
+      }
+    }, 10000);
     
     return () => clearInterval(interval);
-  }, [isHost, currentSong, isPlaying]);
+  }, [isHost, currentRoom]);
   
   // Auto-scroll chat
   useEffect(() => {
@@ -110,13 +133,19 @@ export default function RoomPage() {
   const handlePlaySong = (song: Song) => {
     setCurrentSong(song);
     setIsPlaying(true);
-    updatePlayback(song, true, 0);
+    broadcastSongChange(song);
   };
   
   const handleTogglePlay = () => {
-    setIsPlaying(!isPlaying);
-    if (isHost) {
-      updatePlayback(currentSong, !isPlaying, 0);
+    const playerState = usePlayerStore.getState();
+    if (playerState.isPlaying) {
+      setIsPlaying(false);
+      broadcastPause(playerState.currentTime);
+    } else {
+      setIsPlaying(true);
+      if (currentSong) {
+        broadcastPlay(currentSong, playerState.currentTime);
+      }
     }
   };
   
@@ -151,14 +180,21 @@ export default function RoomPage() {
             </div>
           </div>
         </div>
-        <div className="flex items-center gap-2 text-sm text-muted-foreground">
-          <Users className="w-4 h-4" />
-          <span>{members.length}</span>
+        <div className="flex items-center gap-3 text-sm text-muted-foreground">
+          {/* Sync indicator */}
+          <div className="flex items-center gap-1">
+            <div className={`w-2 h-2 rounded-full ${synced ? 'bg-green-500' : 'bg-yellow-500 animate-pulse'}`} />
+            <span className="text-[10px]">{synced ? 'Synced' : 'Syncing...'}</span>
+          </div>
+          <div className="flex items-center gap-1">
+            <Users className="w-4 h-4" />
+            <span>{members.length}</span>
+          </div>
         </div>
       </div>
       
       <div className="flex-1 flex flex-col md:flex-row overflow-hidden">
-        {/* Main area - Now Playing + Chat */}
+        {/* Main area */}
         <div className="flex-1 flex flex-col overflow-hidden">
           {/* Now Playing */}
           <div className="p-4 border-b border-border/50">
@@ -178,7 +214,13 @@ export default function RoomPage() {
                     <Button variant="ghost" size="icon" onClick={handleTogglePlay}>
                       {isPlaying ? <Pause className="w-5 h-5" /> : <Play className="w-5 h-5" />}
                     </Button>
-                    <Button variant="ghost" size="icon" onClick={playNext}>
+                    <Button variant="ghost" size="icon" onClick={() => {
+                      playNext();
+                      setTimeout(() => {
+                        const next = usePlayerStore.getState().currentSong;
+                        if (next) broadcastSongChange(next);
+                      }, 100);
+                    }}>
                       <SkipForward className="w-5 h-5" />
                     </Button>
                   </div>
