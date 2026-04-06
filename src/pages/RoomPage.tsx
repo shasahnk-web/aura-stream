@@ -134,7 +134,7 @@ export default function RoomPage() {
   }
   
   return (
-    <div className="flex-1 flex flex-col overflow-hidden pb-24 md:pb-28">
+    <div className="flex-1 flex flex-col overflow-hidden pb-[160px] md:pb-28">
       {/* Header */}
       <div className="glass border-b border-border/50 px-4 py-3 flex items-center justify-between shrink-0">
         <div className="flex items-center gap-3">

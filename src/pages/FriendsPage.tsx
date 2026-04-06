@@ -134,11 +134,11 @@ export default function FriendsPage() {
     const { data: targetUser } = await supabase
       .from('profiles')
       .select('id')
-      .eq('email', emailInput.trim().toLowerCase())
+      .ilike('email', emailInput.trim())
       .single();
     
     if (!targetUser) {
-      toast.error('User not found');
+      toast.error('User not found. They may need to create an account first.');
       setLoading(false);
       return;
     }
