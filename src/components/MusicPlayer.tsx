@@ -11,6 +11,7 @@ import SleepTimer from './SleepTimer';
 import PlaybackControls from './PlaybackControls';
 import AudioVisualizer from './AudioVisualizer';
 import NowPlayingView from './NowPlayingView';
+import { useActivityTracker } from '@/hooks/useActivityTracker';
 
 function formatTime(s: number) {
   const m = Math.floor(s / 60);
