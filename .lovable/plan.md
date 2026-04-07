@@ -1,106 +1,93 @@
 
 
-## Plan: Fix Layout, Together Sync, Friends, Activity Tracking, and Mobile Issues
+## Plan: Party Mode + Working Settings + Host Kick/End Room
 
-This plan addresses all the reported bugs and missing features in priority order.
+Three areas to implement:
 
 ---
 
-### 1. Fix MobileNav + Together Button Centering
+### 1. Make Settings Actually Functional
 
-**Problem**: Together button shifts position, isn't perfectly centered, overlaps player.
+Currently settings are saved to localStorage but never consumed by the player or app. Wire them up:
 
-**Fix in `MobileNav.tsx`**:
-- Use a 5-item flex layout with `justify-around` instead of left/right groups + center
-- Each nav item gets equal `flex-1` space
-- Together button uses `relative` positioning with `top: -28px` to float above, centered in its flex slot
-- Navbar height set via CSS variable `--nav-height: 64px`
+**`src/hooks/useSettings.ts`** (new): A small hook that reads `kanako-settings` from localStorage and returns the current settings object. Exposes a `getSettings()` function.
 
-### 2. Fix Music Player Positioning (No Overlap)
+**`src/components/MusicPlayer.tsx`**:
+- On mount and when settings change, read `kanako-settings` from localStorage
+- **Autoplay**: When `autoplay` is false, modify `onEnded` to NOT call `playNext()`
+- **Crossfade**: Set `crossfadeDuration` state from settings value instead of hardcoded 0
+- **Sleep Timer**: When `sleepTimerEnabled` is true, start a countdown timer using `sleepTimerDuration` from settings. When it hits 0, pause playback.
 
-**Problem**: Player overlaps navbar and content on mobile.
+**`src/index.css` / `src/App.tsx`**:
+- **Dark/Light theme**: The toggle already applies `light-theme` class. Add a `.light-theme` CSS section with inverted color variables so the toggle actually changes the UI appearance.
 
-**Fix in `MusicPlayer.tsx`**:
-- Mobile: `bottom: 64px` (above navbar) instead of `bottom-16`
-- Use `z-[50]` for player, `z-[60]` for navbar
-- Content padding-bottom in pages adjusted to `pb-40` on mobile (player + navbar + buffer)
+**`src/services/musicApi.ts`** (or MusicPlayer):
+- **Playback quality**: The JioSaavn API returns multiple quality URLs. Map settings quality (low/medium/high/auto) to the appropriate bitrate URL when setting `audio.src`.
 
-**Fix in `RoomPage.tsx`**:
-- Chat input area: add extra bottom padding on mobile so it's not covered by the player/navbar stack
-- Use `pb-[calc(64px+80px+16px)]` or similar to clear both player and navbar
+---
 
-### 3. Fix Together Room Real-Time Sync
+### 2. Party Mode in Together Room
 
-**Problem**: Playback not properly synchronized across users.
+**`src/store/roomStore.ts`**:
+- Add `partyMode` boolean to Room interface (already exists in DB as `party_mode`)
+- Add `broadcastPartyMode(enabled: boolean)` — broadcasts toggle + updates DB
+- Add `broadcastReaction(emoji: string)` — broadcasts reaction event to all users
+- Listen for `party_mode` and `reaction` broadcast events
 
-**Fix in `roomStore.ts`**:
-- On host play/pause/seek/song change, immediately broadcast via Supabase Realtime Broadcast (not just every 5 seconds)
-- Add `seek` broadcast event
-- On listener receive: sync `currentSong`, `isPlaying`, and `currentTime` to the audio element
-- Add drift correction: if listener time differs by >2s from host broadcast, snap to correct time
+**`src/pages/RoomPage.tsx`**:
+- Add Party Mode toggle button (host only) in the header area
+- When party mode is ON:
+  - Show a reaction bar at the bottom of the now-playing section with emoji buttons: 🔥 👏 💥 🎉
+  - Floating emoji animations when reactions are received (CSS animation: float up and fade out)
+  - Album art pulses with a CSS animation synced to a simple beat interval
+  - Background gets a subtle color-shifting glow effect
+- Add a `partyMode` state that syncs from room broadcasts
+- Reaction display: maintain a temporary array of received reactions, render them as floating elements, remove after 2s
 
-**Fix in `RoomPage.tsx`**:
-- Host: on every play/pause/seek action, call `updatePlayback()` immediately (not just interval)
-- Host: broadcast current `audioRef.currentTime` in the periodic sync (not hardcoded `0`)
-- Listeners: when receiving sync, update `playerStore` and seek the audio element
-- Add sync indicator (green dot = synced)
+**Beat-sync visuals** (lightweight, no Web Audio needed for MVP):
+- Use a CSS `@keyframes pulse` animation on album art when party mode is ON
+- Background glow uses `animation: party-glow 2s ease-in-out infinite alternate`
+- Add these keyframes to `src/index.css`
 
-### 4. Fix Host Auto-Assignment on Leave
+---
 
-**Fix in `roomStore.ts` `leaveRoom`**:
-- If host leaves, before deleting room, check if other members exist
-- If yes, update `rooms.host_id` to the oldest member, then leave
-- If no other members, delete room
+### 3. Host Kick User + End Room
 
-### 5. Fix "User Not Found" in Friends
+**`src/store/roomStore.ts`**:
+- Add `kickUser(userId: string)` — host deletes from `room_members`, broadcasts `kick` event with the kicked user's ID
+- Add `endRoom()` — host broadcasts `room_ended` event, deletes all room_members, deletes room from DB, resets store
+- Listen for `kick` broadcast: if current user's ID matches, auto-leave and navigate to `/together`
+- Listen for `room_ended` broadcast: auto-leave and navigate to `/together`
 
-**Problem**: Email lookup fails because emails might be stored differently (case, empty).
+**`src/pages/RoomPage.tsx`**:
+- In the members/participants section, if `isHost`, show a ✕ button next to each non-host member to kick them
+- Add "End Room" button in the header (host only) with a confirmation prompt
+- On receiving `kick` or `room_ended` event, show a toast and redirect
 
-**Fix in `FriendsPage.tsx`**:
-- Use `ilike` instead of `eq` for case-insensitive email search
-- Add a more helpful error message suggesting the friend needs an account first
-- Trim and lowercase the email before searching
+**Database**: The existing RLS allows host to delete room and members can delete themselves. For kick, the host needs to delete other members' rows. Need a migration to update `room_members` DELETE policy to also allow the room host:
 
-### 6. Add Activity Tracking on Song Play
-
-**Fix in `playerStore.ts` or `MusicPlayer.tsx`**:
-- When `currentSong` changes and user is authenticated, upsert to `user_activity` table
-- Use `upsert` with `onConflict: 'user_id'` (need a unique constraint on `user_id` — add via migration)
-- Set `action: 'playing'`, `song_data: currentSong`, `updated_at: now()`
-
-**Migration needed**: Add unique constraint on `user_activity.user_id` so upsert works (one activity row per user).
-
-### 7. Fix Mobile Chat Input Overlap in Together Room
-
-**Problem**: Music player covers chat input in room page on mobile.
-
-**Fix in `RoomPage.tsx`**:
-- Add sufficient bottom padding to the chat input container
-- Use `pb-[160px]` on mobile to clear player + navbar
-- Or detect if player is visible and add dynamic spacing
-
-### 8. Vercel SPA Routing
-
-**Fix**: Add/verify `vercel.json` with SPA rewrite rule so deep links work on reload.
-
-```json
-{
-  "rewrites": [{ "source": "/(.*)", "destination": "/index.html" }]
-}
+```sql
+DROP POLICY "Users can leave rooms" ON public.room_members;
+CREATE POLICY "Users or host can remove members" ON public.room_members
+  FOR DELETE TO authenticated
+  USING (
+    auth.uid() = user_id
+    OR EXISTS (
+      SELECT 1 FROM rooms WHERE rooms.id = room_members.room_id AND rooms.host_id = auth.uid()
+    )
+  );
 ```
 
 ---
 
-### Technical Summary
+### Files Changed
 
 | File | Changes |
 |---|---|
-| `src/components/MobileNav.tsx` | Rewrite to 5-item flex layout with centered floating Together button |
-| `src/components/MusicPlayer.tsx` | Fix mobile `bottom` position to sit above navbar |
-| `src/store/roomStore.ts` | Add immediate broadcast on play/pause/seek, drift correction, host auto-assign |
-| `src/pages/RoomPage.tsx` | Pass actual currentTime in sync, fix mobile padding, add sync indicator |
-| `src/pages/FriendsPage.tsx` | Fix email lookup with `ilike`, better error messages |
-| `src/components/MusicPlayer.tsx` or new hook | Add activity tracking upsert on song change |
-| `vercel.json` | SPA rewrite rule |
-| Migration | Add unique constraint on `user_activity.user_id` |
+| `src/index.css` | Add `.light-theme` color vars, party-mode keyframes |
+| `src/hooks/useSettings.ts` | New: hook to read settings from localStorage |
+| `src/components/MusicPlayer.tsx` | Wire autoplay, crossfade, sleep timer from settings |
+| `src/store/roomStore.ts` | Add partyMode, reactions, kick, endRoom |
+| `src/pages/RoomPage.tsx` | Party mode UI, reactions, kick buttons, end room button |
+| Migration | Update room_members DELETE RLS for host kick |
 
