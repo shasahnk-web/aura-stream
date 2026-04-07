@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Copy, Users, Send, Music, Play, Pause, SkipForward, Check, X, Search, Wifi } from 'lucide-react';
-import { motion } from 'framer-motion';
+import { ArrowLeft, Copy, Users, Send, Music, Play, Pause, SkipForward, Check, X, Search, PartyPopper, UserX, DoorOpen } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -11,14 +11,16 @@ import { usePlayerStore, Song } from '@/store/playerStore';
 import { searchSongs } from '@/services/musicApi';
 import { toast } from 'sonner';
 
+const REACTION_EMOJIS = ['🔥', '👏', '💥', '🎉'];
+
 export default function RoomPage() {
   const { id: roomId } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { user } = useAuthStore();
   const { 
-    currentRoom, members, messages, songRequests, isHost, userName,
+    currentRoom, members, messages, songRequests, isHost, userName, reactions,
     joinRoom, leaveRoom, sendMessage, broadcastPlay, broadcastPause, broadcastSeek, broadcastSongChange,
-    requestSong, updateRequestStatus 
+    requestSong, updateRequestStatus, broadcastPartyMode, broadcastReaction, kickUser, endRoom
   } = useRoomStore();
   const { currentSong, isPlaying, setCurrentSong, setIsPlaying, setCurrentTime, playNext } = usePlayerStore();
   
@@ -28,6 +30,7 @@ export default function RoomPage() {
   const [searching, setSearching] = useState(false);
   const [showSearch, setShowSearch] = useState(false);
   const [synced, setSynced] = useState(true);
+  const [showEndConfirm, setShowEndConfirm] = useState(false);
   const chatEndRef = useRef<HTMLDivElement>(null);
   
   // Join room on mount
@@ -36,34 +39,47 @@ export default function RoomPage() {
       navigate('/together');
       return;
     }
-    
     if (!currentRoom || currentRoom.id !== roomId) {
       const storedName = localStorage.getItem('kanako-user-name') || 'Guest';
       joinRoom(roomId, user.id, storedName);
     }
   }, [roomId, user]);
   
+  // Listen for kick / room ended events
+  useEffect(() => {
+    const onKick = (e: Event) => {
+      const detail = (e as CustomEvent).detail;
+      if (user && detail.userId === user.id) {
+        toast.error('You have been removed from the room');
+        navigate('/together');
+      }
+    };
+    const onRoomEnded = () => {
+      toast.info('The host ended the room');
+      navigate('/together');
+    };
+    window.addEventListener('kanako-kick', onKick);
+    window.addEventListener('kanako-room-ended', onRoomEnded);
+    return () => {
+      window.removeEventListener('kanako-kick', onKick);
+      window.removeEventListener('kanako-room-ended', onRoomEnded);
+    };
+  }, [user, navigate]);
+  
   // Listener: sync playback from room state (drift correction)
   useEffect(() => {
     if (!currentRoom || isHost) return;
-    
-    // Sync song
     if (currentRoom.current_song) {
       const playerSong = usePlayerStore.getState().currentSong;
       if (!playerSong || playerSong.id !== currentRoom.current_song.id) {
         setCurrentSong(currentRoom.current_song);
       }
     }
-    
-    // Sync play/pause
     setIsPlaying(currentRoom.is_playing);
-    
-    // Drift correction: calculate expected time from started_at_ms
     if (currentRoom.is_playing && currentRoom.started_at_ms) {
       const expectedTime = (Date.now() - currentRoom.started_at_ms) / 1000;
       const playerTime = usePlayerStore.getState().currentTime;
       const drift = Math.abs(expectedTime - playerTime);
-      
       if (drift > 2) {
         setCurrentTime(expectedTime);
         setSynced(false);
@@ -77,16 +93,13 @@ export default function RoomPage() {
   // Host: periodic sync broadcast every 10s
   useEffect(() => {
     if (!isHost || !currentRoom) return;
-    
     const interval = setInterval(() => {
       const playerState = usePlayerStore.getState();
       if (playerState.currentSong && playerState.isPlaying) {
-        // Just a light DB update for late joiners
         const { updatePlayback } = useRoomStore.getState();
         updatePlayback(playerState.currentSong, playerState.isPlaying, playerState.currentTime);
       }
     }, 10000);
-    
     return () => clearInterval(interval);
   }, [isHost, currentRoom]);
   
@@ -96,9 +109,7 @@ export default function RoomPage() {
   }, [messages]);
   
   const handleLeave = async () => {
-    if (user) {
-      await leaveRoom(user.id);
-    }
+    if (user) await leaveRoom(user.id);
     navigate('/together');
   };
   
@@ -143,9 +154,7 @@ export default function RoomPage() {
       broadcastPause(playerState.currentTime);
     } else {
       setIsPlaying(true);
-      if (currentSong) {
-        broadcastPlay(currentSong, playerState.currentTime);
-      }
+      if (currentSong) broadcastPlay(currentSong, playerState.currentTime);
     }
   };
   
@@ -153,6 +162,18 @@ export default function RoomPage() {
     updateRequestStatus(request.id, 'accepted');
     handlePlaySong(request.song_data);
   };
+
+  const handleEndRoom = async () => {
+    await endRoom();
+    navigate('/together');
+  };
+
+  const handleKick = async (userId: string) => {
+    await kickUser(userId);
+    toast.success('User removed');
+  };
+
+  const partyMode = currentRoom?.party_mode ?? false;
   
   if (!currentRoom) {
     return (
@@ -163,7 +184,28 @@ export default function RoomPage() {
   }
   
   return (
-    <div className="flex-1 flex flex-col overflow-hidden pb-[160px] md:pb-28">
+    <div className={`flex-1 flex flex-col overflow-hidden pb-[160px] md:pb-28 ${partyMode ? 'party-mode-bg' : ''}`}
+      style={partyMode ? { animation: 'party-glow 4s ease-in-out infinite' } : undefined}
+    >
+      {/* Floating reactions */}
+      <div className="fixed inset-0 pointer-events-none z-[100]">
+        <AnimatePresence>
+          {reactions.map((r) => (
+            <motion.div
+              key={r.id}
+              initial={{ opacity: 1, y: 0, x: Math.random() * 200 + 50 }}
+              animate={{ opacity: 0, y: -150 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 2, ease: 'easeOut' }}
+              className="absolute bottom-40 text-3xl"
+              style={{ left: `${Math.random() * 70 + 15}%` }}
+            >
+              {r.emoji}
+            </motion.div>
+          ))}
+        </AnimatePresence>
+      </div>
+
       {/* Header */}
       <div className="glass border-b border-border/50 px-4 py-3 flex items-center justify-between shrink-0">
         <div className="flex items-center gap-3">
@@ -180,7 +222,26 @@ export default function RoomPage() {
             </div>
           </div>
         </div>
-        <div className="flex items-center gap-3 text-sm text-muted-foreground">
+        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+          {/* Party mode toggle (host only) */}
+          {isHost && (
+            <Button
+              variant={partyMode ? 'default' : 'outline'}
+              size="sm"
+              onClick={() => broadcastPartyMode(!partyMode)}
+              className={partyMode ? 'bg-accent text-accent-foreground' : ''}
+            >
+              <PartyPopper className="w-4 h-4 mr-1" />
+              <span className="hidden sm:inline">Party</span>
+            </Button>
+          )}
+          {/* End room (host only) */}
+          {isHost && (
+            <Button variant="destructive" size="sm" onClick={() => setShowEndConfirm(true)}>
+              <DoorOpen className="w-4 h-4 mr-1" />
+              <span className="hidden sm:inline">End</span>
+            </Button>
+          )}
           {/* Sync indicator */}
           <div className="flex items-center gap-1">
             <div className={`w-2 h-2 rounded-full ${synced ? 'bg-green-500' : 'bg-yellow-500 animate-pulse'}`} />
@@ -203,7 +264,8 @@ export default function RoomPage() {
                 <img 
                   src={currentSong.image} 
                   alt={currentSong.name}
-                  className="w-16 h-16 rounded-xl object-cover shadow-lg"
+                  className={`w-16 h-16 rounded-xl object-cover shadow-lg ${partyMode ? 'animate-pulse' : ''}`}
+                  style={partyMode ? { animation: 'party-pulse 1.5s ease-in-out infinite' } : undefined}
                 />
                 <div className="flex-1 min-w-0">
                   <p className="font-semibold text-foreground truncate">{currentSong.name}</p>
@@ -231,15 +293,25 @@ export default function RoomPage() {
                 <Music className="w-8 h-8 mx-auto mb-2 opacity-50" />
                 <p className="text-sm">No song playing</p>
                 {isHost && (
-                  <Button 
-                    variant="outline" 
-                    size="sm" 
-                    className="mt-2"
-                    onClick={() => setShowSearch(true)}
-                  >
+                  <Button variant="outline" size="sm" className="mt-2" onClick={() => setShowSearch(true)}>
                     <Search className="w-4 h-4 mr-1" /> Search Songs
                   </Button>
                 )}
+              </div>
+            )}
+
+            {/* Reaction bar (party mode) */}
+            {partyMode && (
+              <div className="flex items-center justify-center gap-3 mt-3 pt-3 border-t border-border/30">
+                {REACTION_EMOJIS.map((emoji) => (
+                  <button
+                    key={emoji}
+                    onClick={() => broadcastReaction(emoji)}
+                    className="text-2xl hover:scale-125 active:scale-90 transition-transform"
+                  >
+                    {emoji}
+                  </button>
+                ))}
               </div>
             )}
           </div>
@@ -281,8 +353,40 @@ export default function RoomPage() {
           </div>
         </div>
         
-        {/* Sidebar - Song Requests (desktop) */}
+        {/* Sidebar - Members + Song Requests (desktop) */}
         <div className="hidden md:flex flex-col w-80 border-l border-border/50">
+          {/* Members */}
+          <div className="p-4 border-b border-border/50">
+            <h3 className="font-semibold text-foreground mb-3 flex items-center gap-2">
+              <Users className="w-4 h-4" /> Members ({members.length})
+            </h3>
+            <div className="space-y-2">
+              {members.map((m) => (
+                <div key={m.user_id} className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <div className="w-6 h-6 rounded-full bg-primary/20 flex items-center justify-center">
+                      <span className="text-[10px] font-semibold text-primary">{m.user_name.charAt(0).toUpperCase()}</span>
+                    </div>
+                    <span className="text-sm text-foreground">{m.user_name}</span>
+                    {m.user_id === currentRoom.host_id && (
+                      <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-accent/20 text-accent">Host</span>
+                    )}
+                  </div>
+                  {isHost && m.user_id !== currentRoom.host_id && (
+                    <button
+                      onClick={() => handleKick(m.user_id)}
+                      className="text-muted-foreground hover:text-destructive transition-colors"
+                      title="Remove user"
+                    >
+                      <UserX className="w-4 h-4" />
+                    </button>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Song Requests */}
           <div className="p-4 border-b border-border/50 flex items-center justify-between">
             <h3 className="font-semibold text-foreground">Song Requests</h3>
             {!isHost && (
@@ -300,11 +404,7 @@ export default function RoomPage() {
                 {songRequests.filter(r => r.status === 'pending').map((request) => (
                   <div key={request.id} className="p-3 rounded-xl glass">
                     <div className="flex items-center gap-3">
-                      <img 
-                        src={request.song_data.image} 
-                        alt={request.song_data.name}
-                        className="w-10 h-10 rounded-lg object-cover"
-                      />
+                      <img src={request.song_data.image} alt={request.song_data.name} className="w-10 h-10 rounded-lg object-cover" />
                       <div className="flex-1 min-w-0">
                         <p className="text-sm font-medium text-foreground truncate">{request.song_data.name}</p>
                         <p className="text-xs text-muted-foreground truncate">by {request.requested_by}</p>
@@ -312,18 +412,10 @@ export default function RoomPage() {
                     </div>
                     {isHost && (
                       <div className="flex gap-2 mt-2">
-                        <Button 
-                          size="sm" 
-                          className="flex-1"
-                          onClick={() => handleAcceptRequest(request)}
-                        >
+                        <Button size="sm" className="flex-1" onClick={() => handleAcceptRequest(request)}>
                           <Check className="w-3 h-3 mr-1" /> Play
                         </Button>
-                        <Button 
-                          size="sm" 
-                          variant="outline"
-                          onClick={() => updateRequestStatus(request.id, 'rejected')}
-                        >
+                        <Button size="sm" variant="outline" onClick={() => updateRequestStatus(request.id, 'rejected')}>
                           <X className="w-3 h-3" />
                         </Button>
                       </div>
@@ -350,7 +442,6 @@ export default function RoomPage() {
                 <X className="w-4 h-4" />
               </Button>
             </div>
-            
             <div className="p-4">
               <div className="flex gap-2 mb-4">
                 <Input
@@ -364,7 +455,6 @@ export default function RoomPage() {
                   <Search className="w-4 h-4" />
                 </Button>
               </div>
-              
               <ScrollArea className="h-64">
                 {searchResults.map((song) => (
                   <div 
@@ -380,6 +470,25 @@ export default function RoomPage() {
                   </div>
                 ))}
               </ScrollArea>
+            </div>
+          </motion.div>
+        </div>
+      )}
+
+      {/* End Room Confirmation */}
+      {showEndConfirm && (
+        <div className="fixed inset-0 z-50 bg-background/80 backdrop-blur-sm flex items-center justify-center p-4">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="w-full max-w-sm bg-card rounded-2xl shadow-2xl p-6 text-center"
+          >
+            <DoorOpen className="w-10 h-10 mx-auto mb-3 text-destructive" />
+            <h3 className="text-lg font-semibold text-foreground mb-2">End Room?</h3>
+            <p className="text-sm text-muted-foreground mb-6">This will remove all members and delete the room permanently.</p>
+            <div className="flex gap-3">
+              <Button variant="outline" className="flex-1" onClick={() => setShowEndConfirm(false)}>Cancel</Button>
+              <Button variant="destructive" className="flex-1" onClick={handleEndRoom}>End Room</Button>
             </div>
           </motion.div>
         </div>

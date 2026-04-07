@@ -12,6 +12,7 @@ import PlaybackControls from './PlaybackControls';
 import AudioVisualizer from './AudioVisualizer';
 import NowPlayingView from './NowPlayingView';
 import { useActivityTracker } from '@/hooks/useActivityTracker';
+import { useSettings } from '@/hooks/useSettings';
 
 function formatTime(s: number) {
   const m = Math.floor(s / 60);
@@ -23,6 +24,7 @@ export default function MusicPlayer() {
   const audioRef = useRef<HTMLAudioElement>(null);
   const crossfadeAudioRef = useRef<HTMLAudioElement>(null);
   const crossfadeTimerRef = useRef<ReturnType<typeof setTimeout>>();
+  const sleepTimerRef = useRef<ReturnType<typeof setTimeout>>();
   const {
     currentSong, isPlaying, volume, currentTime, duration,
     shuffle, repeat, togglePlay, setCurrentTime, setDuration,
@@ -31,11 +33,30 @@ export default function MusicPlayer() {
   const { isLiked, toggleLike } = useLikedStore();
   useActivityTracker();
 
+  const settings = useSettings();
   const [playbackRate, setPlaybackRate] = useState(1);
-  const [crossfadeDuration, setCrossfadeDuration] = useState(0);
   const [queueOpen, setQueueOpen] = useState(false);
   const [lyricsOpen, setLyricsOpen] = useState(false);
   const [nowPlayingOpen, setNowPlayingOpen] = useState(false);
+
+  // Apply crossfade from settings
+  const crossfadeDuration = settings.crossfade;
+
+  // Sleep timer
+  useEffect(() => {
+    if (sleepTimerRef.current) clearTimeout(sleepTimerRef.current);
+    if (settings.sleepTimerEnabled && isPlaying) {
+      sleepTimerRef.current = setTimeout(() => {
+        setIsPlaying(false);
+      }, settings.sleepTimerDuration * 60 * 1000);
+    }
+    return () => { if (sleepTimerRef.current) clearTimeout(sleepTimerRef.current); };
+  }, [settings.sleepTimerEnabled, settings.sleepTimerDuration, isPlaying]);
+
+  // Apply theme
+  useEffect(() => {
+    document.documentElement.classList.toggle('light-theme', settings.theme === 'light');
+  }, [settings.theme]);
 
   // Load song
   useEffect(() => {
@@ -106,10 +127,12 @@ export default function MusicPlayer() {
     if (repeat === 'one' && audioRef.current) {
       audioRef.current.currentTime = 0;
       audioRef.current.play();
-    } else {
+    } else if (settings.autoplay) {
       playNext();
+    } else {
+      setIsPlaying(false);
     }
-  }, [repeat, playNext, volume]);
+  }, [repeat, playNext, volume, settings.autoplay]);
 
   const handleSeek = (e: React.ChangeEvent<HTMLInputElement>) => {
     const t = parseFloat(e.target.value);
@@ -165,7 +188,7 @@ export default function MusicPlayer() {
           className="fixed left-0 right-0 z-[50] glass border-t border-border/50 bottom-[var(--nav-height,64px)] md:bottom-0"
           style={{ backdropFilter: 'blur(12px)' }}
         >
-          {/* Progress bar on top like reference */}
+          {/* Progress bar on top */}
           <div className="absolute top-0 left-0 right-0 h-[3px] bg-white/10">
             <div
               className="h-full rounded-r-sm relative"
@@ -274,7 +297,7 @@ export default function MusicPlayer() {
                 <Shuffle className="w-[18px] h-[18px]" />
               </button>
               <button
-                onClick={(e) => { toggleLike(currentSong); }}
+                onClick={() => { toggleLike(currentSong); }}
                 className={`transition-all hover:scale-110 ${liked ? 'text-accent' : 'text-muted-foreground hover:text-foreground'}`}
               >
                 <Heart className="w-[18px] h-[18px]" fill={liked ? 'currentColor' : 'none'} />
