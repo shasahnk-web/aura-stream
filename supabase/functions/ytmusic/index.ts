@@ -1,4 +1,7 @@
-import { corsHeaders } from '@supabase/supabase-js/cors';
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+};
 
 const YTMUSIC_API = 'https://music.youtube.com/youtubei/v1';
 const CLIENT_VERSION = '1.20241023.01.00';
