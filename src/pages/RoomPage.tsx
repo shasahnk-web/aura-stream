@@ -369,8 +369,8 @@ export default function RoomPage() {
           </div>
         </div>
         
-        {/* Sidebar - Members + Song Requests (desktop) */}
-        <div className="hidden md:flex flex-col w-80 border-l border-border/50">
+        {/* Sidebar - Members + Song Requests (desktop + mobile tabs) */}
+        <div className={`${mobileTab === 'members' || mobileTab === 'requests' ? 'flex' : 'hidden'} md:flex flex-col md:w-80 border-l border-border/50 flex-1 md:flex-none overflow-hidden`}
           {/* Members */}
           <div className="p-4 border-b border-border/50">
             <h3 className="font-semibold text-foreground mb-3 flex items-center gap-2">
