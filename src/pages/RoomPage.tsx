@@ -255,9 +255,24 @@ export default function RoomPage() {
         </div>
       </div>
       
+      {/* Mobile Tabs */}
+      <div className="flex md:hidden border-b border-border/50 shrink-0">
+        {(['chat', 'members', 'requests'] as const).map(tab => (
+          <button
+            key={tab}
+            onClick={() => setMobileTab(tab)}
+            className={`flex-1 py-2.5 text-xs font-semibold uppercase tracking-wider transition-colors ${
+              mobileTab === tab ? 'text-primary border-b-2 border-primary' : 'text-muted-foreground'
+            }`}
+          >
+            {tab === 'members' ? `Members (${members.length})` : tab === 'requests' ? `Requests (${songRequests.filter(r=>r.status==='pending').length})` : 'Chat'}
+          </button>
+        ))}
+      </div>
+
       <div className="flex-1 flex flex-col md:flex-row overflow-hidden">
         {/* Main area */}
-        <div className="flex-1 flex flex-col overflow-hidden">
+        <div className={`flex-1 flex flex-col overflow-hidden ${mobileTab !== 'chat' ? 'hidden md:flex' : ''}`}>
           {/* Now Playing */}
           <div className="p-4 border-b border-border/50">
             {currentSong ? (
