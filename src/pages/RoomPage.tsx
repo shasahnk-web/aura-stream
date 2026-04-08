@@ -31,6 +31,7 @@ export default function RoomPage() {
   const [showSearch, setShowSearch] = useState(false);
   const [synced, setSynced] = useState(true);
   const [showEndConfirm, setShowEndConfirm] = useState(false);
+  const [mobileTab, setMobileTab] = useState<'chat' | 'members' | 'requests'>('chat');
   const chatEndRef = useRef<HTMLDivElement>(null);
   
   // Join room on mount
