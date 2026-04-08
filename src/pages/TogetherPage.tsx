@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Headphones, Zap, Users, ArrowRight } from 'lucide-react';
+import { Headphones, Zap, Users, ArrowRight, LogOut } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -12,7 +12,7 @@ import { toast } from 'sonner';
 export default function TogetherPage() {
   const navigate = useNavigate();
   const { user } = useAuthStore();
-  const { createRoom, joinRoom, setUserName } = useRoomStore();
+  const { currentRoom, createRoom, joinRoom, leaveRoom, setUserName } = useRoomStore();
   
   const [name, setName] = useState('');
   const [roomIdInput, setRoomIdInput] = useState('');
@@ -23,6 +23,13 @@ export default function TogetherPage() {
     const stored = localStorage.getItem('kanako-user-name');
     if (stored) setName(stored);
   }, []);
+
+  // If user has an active room, auto-leave it since they navigated away
+  useEffect(() => {
+    if (currentRoom && user) {
+      leaveRoom(user.id);
+    }
+  }, []); // only on mount
   
   const handleNameChange = (value: string) => {
     setName(value);

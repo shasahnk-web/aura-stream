@@ -31,6 +31,7 @@ export default function RoomPage() {
   const [showSearch, setShowSearch] = useState(false);
   const [synced, setSynced] = useState(true);
   const [showEndConfirm, setShowEndConfirm] = useState(false);
+  const [mobileTab, setMobileTab] = useState<'chat' | 'members' | 'requests'>('chat');
   const chatEndRef = useRef<HTMLDivElement>(null);
   
   // Join room on mount
@@ -254,9 +255,24 @@ export default function RoomPage() {
         </div>
       </div>
       
+      {/* Mobile Tabs */}
+      <div className="flex md:hidden border-b border-border/50 shrink-0">
+        {(['chat', 'members', 'requests'] as const).map(tab => (
+          <button
+            key={tab}
+            onClick={() => setMobileTab(tab)}
+            className={`flex-1 py-2.5 text-xs font-semibold uppercase tracking-wider transition-colors ${
+              mobileTab === tab ? 'text-primary border-b-2 border-primary' : 'text-muted-foreground'
+            }`}
+          >
+            {tab === 'members' ? `Members (${members.length})` : tab === 'requests' ? `Requests (${songRequests.filter(r=>r.status==='pending').length})` : 'Chat'}
+          </button>
+        ))}
+      </div>
+
       <div className="flex-1 flex flex-col md:flex-row overflow-hidden">
         {/* Main area */}
-        <div className="flex-1 flex flex-col overflow-hidden">
+        <div className={`flex-1 flex flex-col overflow-hidden ${mobileTab !== 'chat' ? 'hidden md:flex' : ''}`}>
           {/* Now Playing */}
           <div className="p-4 border-b border-border/50">
             {currentSong ? (
@@ -353,10 +369,10 @@ export default function RoomPage() {
           </div>
         </div>
         
-        {/* Sidebar - Members + Song Requests (desktop) */}
-        <div className="hidden md:flex flex-col w-80 border-l border-border/50">
+        {/* Sidebar - Members + Song Requests (desktop + mobile tabs) */}
+        <div className={`${mobileTab === 'members' || mobileTab === 'requests' ? 'flex' : 'hidden'} md:flex flex-col md:w-80 border-l border-border/50 flex-1 md:flex-none overflow-hidden`}>
           {/* Members */}
-          <div className="p-4 border-b border-border/50">
+          <div className={`p-4 border-b border-border/50 ${mobileTab === 'requests' ? 'hidden md:block' : ''}`}>
             <h3 className="font-semibold text-foreground mb-3 flex items-center gap-2">
               <Users className="w-4 h-4" /> Members ({members.length})
             </h3>
@@ -387,7 +403,7 @@ export default function RoomPage() {
           </div>
 
           {/* Song Requests */}
-          <div className="p-4 border-b border-border/50 flex items-center justify-between">
+          <div className={`p-4 border-b border-border/50 flex items-center justify-between ${mobileTab === 'members' ? 'hidden md:flex' : ''}`}>
             <h3 className="font-semibold text-foreground">Song Requests</h3>
             {!isHost && (
               <Button variant="outline" size="sm" onClick={() => setShowSearch(true)}>

@@ -1,12 +1,12 @@
-import { Home, Search, Music, Settings, Headphones } from 'lucide-react';
+import { Home, Search, Music, Settings, Headphones, Users } from 'lucide-react';
 import { NavLink } from 'react-router-dom';
 
 const navItems = [
   { icon: Home, label: 'Home', path: '/' },
   { icon: Search, label: 'Search', path: '/search' },
   { icon: Headphones, label: 'Together', path: '/together', isCenter: true },
+  { icon: Users, label: 'Friends', path: '/friends' },
   { icon: Music, label: 'Library', path: '/library' },
-  { icon: Settings, label: 'Settings', path: '/settings' },
 ];
 
 export default function MobileNav() {
