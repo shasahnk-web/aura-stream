@@ -403,7 +403,7 @@ export default function RoomPage() {
           </div>
 
           {/* Song Requests */}
-          <div className="p-4 border-b border-border/50 flex items-center justify-between">
+          <div className={`p-4 border-b border-border/50 flex items-center justify-between ${mobileTab === 'members' ? 'hidden md:flex' : ''}`}
             <h3 className="font-semibold text-foreground">Song Requests</h3>
             {!isHost && (
               <Button variant="outline" size="sm" onClick={() => setShowSearch(true)}>
