@@ -557,8 +557,6 @@ export const useRoomStore = create<RoomState>((set, get) => ({
       const { currentRoom } = get();
       if (!currentRoom) return;
       const { newHostId } = payload;
-      const userId = supabase.auth.getUser().then(({ data }) => data.user?.id);
-      // Use sync approach
       const myId = (window as any).__kanako_user_id;
       set({
         currentRoom: { ...currentRoom, host_id: newHostId },
