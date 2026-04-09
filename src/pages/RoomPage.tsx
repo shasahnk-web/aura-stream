@@ -1,11 +1,11 @@
 import { useEffect, useRef, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Copy, Users, Send, Music, Play, Pause, SkipForward, Check, X, Search, PartyPopper, UserX, DoorOpen } from 'lucide-react';
+import { ArrowLeft, Copy, Users, Send, Music, Play, Pause, SkipForward, Check, X, Search, PartyPopper, UserX, DoorOpen, Crown, VolumeX, Volume2, UserPlus } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { useRoomStore, RoomMessage, SongRequest } from '@/store/roomStore';
+import { useRoomStore, RoomMessage, SongRequest, JoinRequest } from '@/store/roomStore';
 import { useAuthStore } from '@/store/authStore';
 import { usePlayerStore, Song } from '@/store/playerStore';
 import { searchSongs } from '@/services/musicApi';
@@ -18,9 +18,10 @@ export default function RoomPage() {
   const navigate = useNavigate();
   const { user } = useAuthStore();
   const { 
-    currentRoom, members, messages, songRequests, isHost, userName, reactions,
+    currentRoom, members, messages, songRequests, joinRequests, isHost, userName, reactions, mutedUsers,
     joinRoom, leaveRoom, sendMessage, broadcastPlay, broadcastPause, broadcastSeek, broadcastSongChange,
-    requestSong, updateRequestStatus, broadcastPartyMode, broadcastReaction, kickUser, endRoom
+    requestSong, updateRequestStatus, broadcastPartyMode, broadcastReaction, kickUser, endRoom,
+    transferHost, broadcastMuteUser, approveJoin, rejectJoin,
   } = useRoomStore();
   const { currentSong, isPlaying, setCurrentSong, setIsPlaying, setCurrentTime, playNext } = usePlayerStore();
   
@@ -34,6 +35,17 @@ export default function RoomPage() {
   const [mobileTab, setMobileTab] = useState<'chat' | 'members' | 'requests'>('chat');
   const chatEndRef = useRef<HTMLDivElement>(null);
   
+  // Store user ID globally for broadcast handlers
+  useEffect(() => {
+    if (user) (window as any).__kanako_user_id = user.id;
+  }, [user]);
+  
+  // Expose player state getter for host sync on new joins
+  useEffect(() => {
+    (window as any).__kanako_player_state = () => usePlayerStore.getState();
+    return () => { delete (window as any).__kanako_player_state; };
+  }, []);
+  
   // Join room on mount
   useEffect(() => {
     if (!roomId || !user) {
@@ -46,7 +58,7 @@ export default function RoomPage() {
     }
   }, [roomId, user]);
   
-  // Listen for kick / room ended events
+  // Listen for kick / room ended / host transfer / mute events
   useEffect(() => {
     const onKick = (e: Event) => {
       const detail = (e as CustomEvent).detail;
@@ -59,15 +71,35 @@ export default function RoomPage() {
       toast.info('The host ended the room');
       navigate('/together');
     };
+    const onBecameHost = () => {
+      toast.success('You are now the host!');
+    };
+    const onMute = (e: Event) => {
+      const { muted } = (e as CustomEvent).detail;
+      if (muted) {
+        toast.info('The host muted your audio');
+        // Set volume to 0 on the audio element
+        const audio = document.querySelector('audio');
+        if (audio) audio.volume = 0;
+      } else {
+        toast.info('The host unmuted your audio');
+        const audio = document.querySelector('audio');
+        if (audio) audio.volume = 1;
+      }
+    };
     window.addEventListener('kanako-kick', onKick);
     window.addEventListener('kanako-room-ended', onRoomEnded);
+    window.addEventListener('kanako-became-host', onBecameHost);
+    window.addEventListener('kanako-mute', onMute);
     return () => {
       window.removeEventListener('kanako-kick', onKick);
       window.removeEventListener('kanako-room-ended', onRoomEnded);
+      window.removeEventListener('kanako-became-host', onBecameHost);
+      window.removeEventListener('kanako-mute', onMute);
     };
   }, [user, navigate]);
   
-  // Listener: sync playback from room state (drift correction)
+  // Listener: sync playback from room state (drift correction - tighter 1s threshold)
   useEffect(() => {
     if (!currentRoom || isHost) return;
     if (currentRoom.current_song) {
@@ -81,7 +113,7 @@ export default function RoomPage() {
       const expectedTime = (Date.now() - currentRoom.started_at_ms) / 1000;
       const playerTime = usePlayerStore.getState().currentTime;
       const drift = Math.abs(expectedTime - playerTime);
-      if (drift > 2) {
+      if (drift > 1) {
         setCurrentTime(expectedTime);
         setSynced(false);
         setTimeout(() => setSynced(true), 1000);
@@ -91,7 +123,25 @@ export default function RoomPage() {
     }
   }, [currentRoom?.current_song, currentRoom?.is_playing, currentRoom?.playback_time, currentRoom?.started_at_ms, isHost]);
   
-  // Host: periodic sync broadcast every 10s
+  // Listener: periodic drift correction every 3s
+  useEffect(() => {
+    if (!currentRoom || isHost) return;
+    const interval = setInterval(() => {
+      const { currentRoom: cr } = useRoomStore.getState();
+      if (!cr || !cr.is_playing || !cr.started_at_ms) return;
+      const expectedTime = (Date.now() - cr.started_at_ms) / 1000;
+      const playerTime = usePlayerStore.getState().currentTime;
+      const drift = Math.abs(expectedTime - playerTime);
+      if (drift > 1) {
+        setCurrentTime(expectedTime);
+        setSynced(false);
+        setTimeout(() => setSynced(true), 1000);
+      }
+    }, 3000);
+    return () => clearInterval(interval);
+  }, [currentRoom?.id, isHost]);
+  
+  // Host: periodic sync broadcast every 5s
   useEffect(() => {
     if (!isHost || !currentRoom) return;
     const interval = setInterval(() => {
@@ -100,7 +150,7 @@ export default function RoomPage() {
         const { updatePlayback } = useRoomStore.getState();
         updatePlayback(playerState.currentSong, playerState.isPlaying, playerState.currentTime);
       }
-    }, 10000);
+    }, 5000);
     return () => clearInterval(interval);
   }, [isHost, currentRoom]);
   
@@ -174,7 +224,29 @@ export default function RoomPage() {
     toast.success('User removed');
   };
 
+  const handleTransferHost = async (userId: string) => {
+    await transferHost(userId);
+    toast.success('Host role transferred');
+  };
+
+  const handleToggleMute = (userId: string) => {
+    const isMuted = mutedUsers.includes(userId);
+    broadcastMuteUser(userId, !isMuted);
+    toast.success(isMuted ? 'User unmuted' : 'User muted');
+  };
+
+  const handleApproveJoin = async (req: JoinRequest) => {
+    await approveJoin(req.id, req.user_id, req.user_name, req.room_id);
+    toast.success(`${req.user_name} approved`);
+  };
+
+  const handleRejectJoin = async (req: JoinRequest) => {
+    await rejectJoin(req.id);
+    toast.info(`${req.user_name} rejected`);
+  };
+
   const partyMode = currentRoom?.party_mode ?? false;
+  const pendingJoinRequests = joinRequests.filter(r => r.status === 'pending');
   
   if (!currentRoom) {
     return (
@@ -224,7 +296,6 @@ export default function RoomPage() {
           </div>
         </div>
         <div className="flex items-center gap-2 text-sm text-muted-foreground">
-          {/* Party mode toggle (host only) */}
           {isHost && (
             <Button
               variant={partyMode ? 'default' : 'outline'}
@@ -236,14 +307,23 @@ export default function RoomPage() {
               <span className="hidden sm:inline">Party</span>
             </Button>
           )}
-          {/* End room (host only) */}
           {isHost && (
             <Button variant="destructive" size="sm" onClick={() => setShowEndConfirm(true)}>
               <DoorOpen className="w-4 h-4 mr-1" />
               <span className="hidden sm:inline">End</span>
             </Button>
           )}
-          {/* Sync indicator */}
+          {/* Join requests badge */}
+          {isHost && pendingJoinRequests.length > 0 && (
+            <div className="relative">
+              <Button variant="outline" size="sm" onClick={() => setMobileTab('members')}>
+                <UserPlus className="w-4 h-4" />
+              </Button>
+              <span className="absolute -top-1 -right-1 w-4 h-4 bg-destructive rounded-full text-[10px] text-destructive-foreground flex items-center justify-center">
+                {pendingJoinRequests.length}
+              </span>
+            </div>
+          )}
           <div className="flex items-center gap-1">
             <div className={`w-2 h-2 rounded-full ${synced ? 'bg-green-500' : 'bg-yellow-500 animate-pulse'}`} />
             <span className="text-[10px]">{synced ? 'Synced' : 'Syncing...'}</span>
@@ -316,7 +396,6 @@ export default function RoomPage() {
               </div>
             )}
 
-            {/* Reaction bar (party mode) */}
             {partyMode && (
               <div className="flex items-center justify-center gap-3 mt-3 pt-3 border-t border-border/30">
                 {REACTION_EMOJIS.map((emoji) => (
@@ -369,8 +448,38 @@ export default function RoomPage() {
           </div>
         </div>
         
-        {/* Sidebar - Members + Song Requests (desktop + mobile tabs) */}
+        {/* Sidebar - Members + Join Requests + Song Requests */}
         <div className={`${mobileTab === 'members' || mobileTab === 'requests' ? 'flex' : 'hidden'} md:flex flex-col md:w-80 border-l border-border/50 flex-1 md:flex-none overflow-hidden`}>
+          
+          {/* Join Requests (host only) */}
+          {isHost && pendingJoinRequests.length > 0 && (
+            <div className={`p-4 border-b border-border/50 ${mobileTab === 'requests' ? 'block' : 'hidden md:block'}`}>
+              <h3 className="font-semibold text-foreground mb-3 flex items-center gap-2">
+                <UserPlus className="w-4 h-4" /> Join Requests ({pendingJoinRequests.length})
+              </h3>
+              <div className="space-y-2">
+                {pendingJoinRequests.map((req) => (
+                  <div key={req.id} className="flex items-center justify-between p-2 rounded-lg glass">
+                    <div className="flex items-center gap-2">
+                      <div className="w-6 h-6 rounded-full bg-accent/20 flex items-center justify-center">
+                        <span className="text-[10px] font-semibold text-accent">{req.user_name.charAt(0).toUpperCase()}</span>
+                      </div>
+                      <span className="text-sm text-foreground">{req.user_name}</span>
+                    </div>
+                    <div className="flex gap-1">
+                      <Button size="sm" variant="default" className="h-7 px-2" onClick={() => handleApproveJoin(req)}>
+                        <Check className="w-3 h-3" />
+                      </Button>
+                      <Button size="sm" variant="outline" className="h-7 px-2" onClick={() => handleRejectJoin(req)}>
+                        <X className="w-3 h-3" />
+                      </Button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
           {/* Members */}
           <div className={`p-4 border-b border-border/50 ${mobileTab === 'requests' ? 'hidden md:block' : ''}`}>
             <h3 className="font-semibold text-foreground mb-3 flex items-center gap-2">
@@ -387,15 +496,34 @@ export default function RoomPage() {
                     {m.user_id === currentRoom.host_id && (
                       <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-accent/20 text-accent">Host</span>
                     )}
+                    {mutedUsers.includes(m.user_id) && (
+                      <VolumeX className="w-3 h-3 text-destructive" />
+                    )}
                   </div>
                   {isHost && m.user_id !== currentRoom.host_id && (
-                    <button
-                      onClick={() => handleKick(m.user_id)}
-                      className="text-muted-foreground hover:text-destructive transition-colors"
-                      title="Remove user"
-                    >
-                      <UserX className="w-4 h-4" />
-                    </button>
+                    <div className="flex items-center gap-1">
+                      <button
+                        onClick={() => handleToggleMute(m.user_id)}
+                        className="text-muted-foreground hover:text-foreground transition-colors p-1"
+                        title={mutedUsers.includes(m.user_id) ? 'Unmute' : 'Mute'}
+                      >
+                        {mutedUsers.includes(m.user_id) ? <Volume2 className="w-3.5 h-3.5" /> : <VolumeX className="w-3.5 h-3.5" />}
+                      </button>
+                      <button
+                        onClick={() => handleTransferHost(m.user_id)}
+                        className="text-muted-foreground hover:text-accent transition-colors p-1"
+                        title="Make Host"
+                      >
+                        <Crown className="w-3.5 h-3.5" />
+                      </button>
+                      <button
+                        onClick={() => handleKick(m.user_id)}
+                        className="text-muted-foreground hover:text-destructive transition-colors p-1"
+                        title="Remove user"
+                      >
+                        <UserX className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
                   )}
                 </div>
               ))}

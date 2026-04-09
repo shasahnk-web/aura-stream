@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Headphones, Zap, Users, ArrowRight, LogOut } from 'lucide-react';
+import { Headphones, Zap, Users, ArrowRight, LogIn, LogOut, Loader2 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -12,7 +12,7 @@ import { toast } from 'sonner';
 export default function TogetherPage() {
   const navigate = useNavigate();
   const { user } = useAuthStore();
-  const { currentRoom, createRoom, joinRoom, leaveRoom, setUserName } = useRoomStore();
+  const { currentRoom, pendingJoin, createRoom, leaveRoom, setUserName, requestJoinRoom, joinRoom, clearPendingJoin } = useRoomStore();
   
   const [name, setName] = useState('');
   const [roomIdInput, setRoomIdInput] = useState('');
@@ -23,13 +23,24 @@ export default function TogetherPage() {
     const stored = localStorage.getItem('kanako-user-name');
     if (stored) setName(stored);
   }, []);
-
-  // If user has an active room, auto-leave it since they navigated away
+  
+  // Handle pending join approval/rejection
   useEffect(() => {
-    if (currentRoom && user) {
-      leaveRoom(user.id);
+    if (!pendingJoin) return;
+    if (pendingJoin.status === 'approved') {
+      toast.success('Host approved your join request!');
+      const storedName = localStorage.getItem('kanako-user-name') || 'Guest';
+      if (user) {
+        joinRoom(pendingJoin.roomId, user.id, storedName).then((ok) => {
+          if (ok) navigate(`/room/${pendingJoin.roomId}`);
+        });
+      }
+    } else if (pendingJoin.status === 'rejected') {
+      toast.error('Host denied your join request');
+      clearPendingJoin();
+      setLoading(false);
     }
-  }, []); // only on mount
+  }, [pendingJoin?.status]);
   
   const handleNameChange = (value: string) => {
     setName(value);
@@ -76,15 +87,87 @@ export default function TogetherPage() {
     }
     
     setLoading(true);
-    const success = await joinRoom(roomIdInput.trim().toUpperCase(), user.id, name.trim());
-    setLoading(false);
+    const result = await requestJoinRoom(roomIdInput.trim().toUpperCase(), user.id, name.trim());
     
-    if (success) {
-      navigate(`/room/${roomIdInput.trim().toUpperCase()}`);
-    } else {
+    if (result === 'not_found') {
       toast.error('Room not found');
+      setLoading(false);
+    }
+    // If 'pending', stay in loading state and wait for approval
+  };
+  
+  const handleLeaveRoom = async () => {
+    if (user) {
+      await leaveRoom(user.id);
     }
   };
+  
+  // Show active room card if user is in a room
+  if (currentRoom) {
+    return (
+      <div className="flex-1 overflow-y-auto scrollbar-thin pb-36 md:pb-28 px-4 md:px-6 pt-8">
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="max-w-md mx-auto"
+        >
+          <div className="text-center mb-8">
+            <div className="w-20 h-20 mx-auto mb-4 rounded-full bg-gradient-to-br from-primary to-accent flex items-center justify-center shadow-2xl">
+              <Headphones className="w-10 h-10 text-primary-foreground" />
+            </div>
+            <h1 className="text-3xl font-bold font-display gradient-text mb-2">Active Room</h1>
+            <p className="text-muted-foreground">You're currently in a room</p>
+          </div>
+          
+          <div className="p-6 rounded-2xl glass mb-6">
+            <h2 className="text-xl font-semibold text-foreground mb-1">{currentRoom.room_name}</h2>
+            <p className="text-sm text-muted-foreground font-mono mb-4">{currentRoom.id}</p>
+            <div className="flex gap-3">
+              <Button
+                onClick={() => navigate(`/room/${currentRoom.id}`)}
+                className="flex-1 h-12 bg-gradient-to-r from-primary to-accent hover:opacity-90"
+              >
+                <LogIn className="w-5 h-5 mr-2" />
+                Rejoin Room
+              </Button>
+              <Button
+                onClick={handleLeaveRoom}
+                variant="outline"
+                className="flex-1 h-12"
+              >
+                <LogOut className="w-5 h-5 mr-2" />
+                Leave Room
+              </Button>
+            </div>
+          </div>
+        </motion.div>
+        <AuthModal open={authOpen} onOpenChange={setAuthOpen} />
+      </div>
+    );
+  }
+  
+  // Show waiting state if pending join
+  if (pendingJoin && pendingJoin.status === 'pending') {
+    return (
+      <div className="flex-1 overflow-y-auto scrollbar-thin pb-36 md:pb-28 px-4 md:px-6 pt-8">
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="max-w-md mx-auto text-center"
+        >
+          <div className="w-20 h-20 mx-auto mb-4 rounded-full bg-gradient-to-br from-primary to-accent flex items-center justify-center shadow-2xl">
+            <Loader2 className="w-10 h-10 text-primary-foreground animate-spin" />
+          </div>
+          <h1 className="text-2xl font-bold font-display gradient-text mb-2">Waiting for Host</h1>
+          <p className="text-muted-foreground mb-6">Your join request has been sent. Waiting for the host to approve...</p>
+          <p className="text-sm font-mono text-muted-foreground mb-6">{pendingJoin.roomId}</p>
+          <Button variant="outline" onClick={() => { clearPendingJoin(); setLoading(false); }}>
+            Cancel
+          </Button>
+        </motion.div>
+      </div>
+    );
+  }
   
   return (
     <div className="flex-1 overflow-y-auto scrollbar-thin pb-36 md:pb-28 px-4 md:px-6 pt-8">
@@ -181,8 +264,8 @@ export default function TogetherPage() {
                 <Zap className="w-5 h-5 text-primary" />
               </div>
               <div>
-                <p className="font-medium text-foreground">Song Requests</p>
-                <p className="text-xs text-muted-foreground">Request songs for the host to play</p>
+                <p className="font-medium text-foreground">Host Approval</p>
+                <p className="text-xs text-muted-foreground">Host approves who can join the room</p>
               </div>
             </div>
           </div>
