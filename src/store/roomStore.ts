@@ -665,9 +665,6 @@ export const useRoomStore = create<RoomState>((set, get) => ({
     set({ channel });
   },
   
-  subscribeToPendingJoin: () => {
-    // Implemented inline in requestJoinRoom
-  },
   
   unsubscribe: () => {
     const { channel } = get();
