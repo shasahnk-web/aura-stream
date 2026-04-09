@@ -24,6 +24,15 @@ export interface SongRequest {
   created_at: string;
 }
 
+export interface JoinRequest {
+  id: string;
+  room_id: string;
+  user_id: string;
+  user_name: string;
+  status: 'pending' | 'approved' | 'rejected';
+  created_at: string;
+}
+
 export interface Room {
   id: string;
   host_id: string;
@@ -46,10 +55,13 @@ interface RoomState {
   members: RoomMember[];
   messages: RoomMessage[];
   songRequests: SongRequest[];
+  joinRequests: JoinRequest[];
   isHost: boolean;
   userName: string;
   channel: RealtimeChannel | null;
   reactions: FloatingReaction[];
+  mutedUsers: string[];
+  pendingJoin: { roomId: string; status: 'pending' | 'approved' | 'rejected' } | null;
   
   setUserName: (name: string) => void;
   createRoom: (userId: string, userName: string) => Promise<string | null>;
@@ -70,6 +82,14 @@ interface RoomState {
   // Host admin
   kickUser: (userId: string) => Promise<void>;
   endRoom: () => Promise<void>;
+  transferHost: (newHostId: string) => Promise<void>;
+  broadcastMuteUser: (userId: string, muted: boolean) => void;
+  
+  // Join approval
+  requestJoinRoom: (roomId: string, userId: string, userName: string) => Promise<'pending' | 'not_found'>;
+  approveJoin: (requestId: string, userId: string, userName: string, roomId: string) => Promise<void>;
+  rejectJoin: (requestId: string) => Promise<void>;
+  clearPendingJoin: () => void;
   
   // Chat
   sendMessage: (message: string) => Promise<void>;
@@ -80,6 +100,7 @@ interface RoomState {
   
   // Internal
   subscribeToRoom: (roomId: string) => void;
+  subscribeToPendingJoin: (roomId: string, userId: string) => void;
   unsubscribe: () => void;
 }
 
@@ -92,10 +113,13 @@ export const useRoomStore = create<RoomState>((set, get) => ({
   members: [],
   messages: [],
   songRequests: [],
+  joinRequests: [],
   isHost: false,
   userName: '',
   channel: null,
   reactions: [],
+  mutedUsers: [],
+  pendingJoin: null,
   
   setUserName: (name) => {
     localStorage.setItem('kanako-user-name', name);
@@ -141,6 +165,7 @@ export const useRoomStore = create<RoomState>((set, get) => ({
     return roomId;
   },
   
+  // Direct join (used after approval or by host)
   joinRoom: async (roomId, userId, userName) => {
     const { data: room, error: roomError } = await supabase
       .from('rooms')
@@ -177,11 +202,116 @@ export const useRoomStore = create<RoomState>((set, get) => ({
       },
       isHost: room.host_id === userId,
       userName,
+      pendingJoin: null,
     });
     
     get().subscribeToRoom(roomId);
     return true;
   },
+  
+  // Request to join (goes through host approval)
+  requestJoinRoom: async (roomId, userId, userName) => {
+    const { data: room } = await supabase
+      .from('rooms')
+      .select('id')
+      .eq('id', roomId)
+      .single();
+    
+    if (!room) return 'not_found';
+    
+    // Insert join request
+    await supabase.from('join_requests').insert({
+      room_id: roomId,
+      user_id: userId,
+      user_name: userName,
+      status: 'pending',
+    });
+    
+    // Broadcast to the room so host sees it in real-time
+    const tempChannel = supabase.channel(`room:${roomId}`);
+    tempChannel.subscribe(async (status) => {
+      if (status === 'SUBSCRIBED') {
+        await tempChannel.send({ type: 'broadcast', event: 'join_request', payload: { userId, userName } });
+        setTimeout(() => supabase.removeChannel(tempChannel), 1000);
+      }
+    });
+    
+    set({ pendingJoin: { roomId, status: 'pending' } });
+    
+    // Subscribe to updates on this join request
+    get().subscribeToPendingJoin(roomId, userId);
+    
+    return 'pending';
+  },
+  
+  subscribeToPendingJoin: (roomId, userId) => {
+    const pendingChannel = supabase.channel(`pending-join:${roomId}:${userId}`)
+      .on('broadcast', { event: 'join_approved' }, ({ payload }) => {
+        if (payload.userId === userId) {
+          set({ pendingJoin: { roomId, status: 'approved' } });
+          supabase.removeChannel(pendingChannel);
+        }
+      })
+      .on('broadcast', { event: 'join_rejected' }, ({ payload }) => {
+        if (payload.userId === userId) {
+          set({ pendingJoin: { roomId, status: 'rejected' } });
+          supabase.removeChannel(pendingChannel);
+        }
+      });
+    pendingChannel.subscribe();
+  },
+  
+  approveJoin: async (requestId, userId, userName, roomId) => {
+    const { isHost } = get();
+    if (!isHost) return;
+    
+    await supabase.from('join_requests').update({ status: 'approved' }).eq('id', requestId);
+    
+    // Add to room members
+    await supabase.from('room_members').upsert({
+      room_id: roomId,
+      user_id: userId,
+      user_name: userName,
+    }, { onConflict: 'room_id,user_id' });
+    
+    // Broadcast approval
+    const { channel } = get();
+    channel?.send({ type: 'broadcast', event: 'join_approved', payload: { userId } });
+    
+    // Also broadcast on the pending channel
+    const pendingCh = supabase.channel(`pending-join:${roomId}:${userId}`);
+    pendingCh.subscribe(async (status) => {
+      if (status === 'SUBSCRIBED') {
+        await pendingCh.send({ type: 'broadcast', event: 'join_approved', payload: { userId } });
+        setTimeout(() => supabase.removeChannel(pendingCh), 1000);
+      }
+    });
+    
+    // Remove from local join requests
+    set({ joinRequests: get().joinRequests.filter(r => r.id !== requestId) });
+  },
+  
+  rejectJoin: async (requestId) => {
+    const { isHost, joinRequests } = get();
+    if (!isHost) return;
+    
+    const req = joinRequests.find(r => r.id === requestId);
+    await supabase.from('join_requests').update({ status: 'rejected' }).eq('id', requestId);
+    
+    if (req) {
+      const pendingCh = supabase.channel(`pending-join:${req.room_id}:${req.user_id}`);
+      pendingCh.subscribe(async (status) => {
+        if (status === 'SUBSCRIBED') {
+          await pendingCh.send({ type: 'broadcast', event: 'join_rejected', payload: { userId: req.user_id } });
+          setTimeout(() => supabase.removeChannel(pendingCh), 1000);
+        }
+      });
+    }
+    
+    set({ joinRequests: get().joinRequests.filter(r => r.id !== requestId) });
+  },
+  
+  clearPendingJoin: () => set({ pendingJoin: null }),
   
   leaveRoom: async (userId) => {
     const { currentRoom, isHost } = get();
@@ -215,8 +345,10 @@ export const useRoomStore = create<RoomState>((set, get) => ({
       members: [],
       messages: [],
       songRequests: [],
+      joinRequests: [],
       isHost: false,
       reactions: [],
+      mutedUsers: [],
     });
   },
   
@@ -288,7 +420,6 @@ export const useRoomStore = create<RoomState>((set, get) => ({
     const { channel, currentRoom, userName } = get();
     if (!channel || !currentRoom) return;
     channel.send({ type: 'broadcast', event: 'reaction', payload: { emoji, userName } });
-    // Also show locally
     const id = Math.random().toString(36).slice(2);
     set({ reactions: [...get().reactions, { id, emoji, userName }] });
     setTimeout(() => {
@@ -302,7 +433,6 @@ export const useRoomStore = create<RoomState>((set, get) => ({
     if (!currentRoom || !isHost) return;
     await supabase.from('room_members').delete().eq('room_id', currentRoom.id).eq('user_id', userId);
     channel?.send({ type: 'broadcast', event: 'kick', payload: { userId } });
-    // Refresh members
     const { data } = await supabase.from('room_members').select('*').eq('room_id', currentRoom.id);
     if (data) set({ members: data as RoomMember[] });
   },
@@ -311,11 +441,36 @@ export const useRoomStore = create<RoomState>((set, get) => ({
     const { currentRoom, isHost, channel } = get();
     if (!currentRoom || !isHost) return;
     channel?.send({ type: 'broadcast', event: 'room_ended', payload: {} });
-    // Delete all members then room
     await supabase.from('room_members').delete().eq('room_id', currentRoom.id);
     await supabase.from('rooms').delete().eq('id', currentRoom.id);
     get().unsubscribe();
-    set({ currentRoom: null, members: [], messages: [], songRequests: [], isHost: false, reactions: [] });
+    set({ currentRoom: null, members: [], messages: [], songRequests: [], joinRequests: [], isHost: false, reactions: [], mutedUsers: [] });
+  },
+  
+  transferHost: async (newHostId) => {
+    const { currentRoom, isHost, channel } = get();
+    if (!currentRoom || !isHost) return;
+    
+    await supabase.from('rooms').update({ host_id: newHostId }).eq('id', currentRoom.id);
+    channel?.send({ type: 'broadcast', event: 'host_transfer', payload: { newHostId } });
+    
+    set({
+      currentRoom: { ...currentRoom, host_id: newHostId },
+      isHost: false,
+    });
+  },
+  
+  broadcastMuteUser: (userId, muted) => {
+    const { channel, currentRoom, isHost } = get();
+    if (!channel || !currentRoom || !isHost) return;
+    channel.send({ type: 'broadcast', event: 'mute_user', payload: { userId, muted } });
+    
+    const { mutedUsers } = get();
+    if (muted) {
+      set({ mutedUsers: [...mutedUsers, userId] });
+    } else {
+      set({ mutedUsers: mutedUsers.filter(id => id !== userId) });
+    }
   },
   
   sendMessage: async (message) => {
@@ -387,9 +542,7 @@ export const useRoomStore = create<RoomState>((set, get) => ({
     
     // Kick broadcast
     channel.on('broadcast', { event: 'kick' }, ({ payload }) => {
-      // Will be handled in RoomPage via a useEffect
       const kickedUserId = payload.userId;
-      // Store it so RoomPage can react
       (window as any).__kanako_kicked_user = kickedUserId;
       window.dispatchEvent(new CustomEvent('kanako-kick', { detail: { userId: kickedUserId } }));
     });
@@ -397,6 +550,43 @@ export const useRoomStore = create<RoomState>((set, get) => ({
     // Room ended broadcast
     channel.on('broadcast', { event: 'room_ended' }, () => {
       window.dispatchEvent(new CustomEvent('kanako-room-ended'));
+    });
+    
+    // Host transfer broadcast
+    channel.on('broadcast', { event: 'host_transfer' }, ({ payload }) => {
+      const { currentRoom } = get();
+      if (!currentRoom) return;
+      const { newHostId } = payload;
+      const userId = supabase.auth.getUser().then(({ data }) => data.user?.id);
+      // Use sync approach
+      const myId = (window as any).__kanako_user_id;
+      set({
+        currentRoom: { ...currentRoom, host_id: newHostId },
+        isHost: myId === newHostId,
+      });
+      if (myId === newHostId) {
+        window.dispatchEvent(new CustomEvent('kanako-became-host'));
+      }
+    });
+    
+    // Mute broadcast
+    channel.on('broadcast', { event: 'mute_user' }, ({ payload }) => {
+      const myId = (window as any).__kanako_user_id;
+      if (payload.userId === myId) {
+        window.dispatchEvent(new CustomEvent('kanako-mute', { detail: { muted: payload.muted } }));
+      }
+    });
+    
+    // Join request broadcast (for host to see)
+    channel.on('broadcast', { event: 'join_request' }, () => {
+      // Refresh join requests from DB
+      supabase.from('join_requests')
+        .select('*')
+        .eq('room_id', roomId)
+        .eq('status', 'pending')
+        .then(({ data }) => {
+          if (data) set({ joinRequests: data as JoinRequest[] });
+        });
     });
     
     // Presence
@@ -407,6 +597,16 @@ export const useRoomStore = create<RoomState>((set, get) => ({
         .then(({ data }) => {
           if (data) set({ members: data as RoomMember[] });
         });
+      
+      // Host: broadcast state to new joiners
+      const { isHost: amHost, currentRoom: cr } = get();
+      if (amHost && cr && cr.current_song) {
+        const playerState = (window as any).__kanako_player_state?.();
+        if (playerState) {
+          const { updatePlayback } = get();
+          updatePlayback(playerState.currentSong, playerState.isPlaying, playerState.currentTime);
+        }
+      }
     });
     
     // Messages & requests via postgres changes
@@ -429,27 +629,44 @@ export const useRoomStore = create<RoomState>((set, get) => ({
             r.id === payload.new.id ? { ...r, status: payload.new.status } : r
           )
         });
+      })
+      .on('postgres_changes', {
+        event: '*', schema: 'public', table: 'join_requests', filter: `room_id=eq.${roomId}`,
+      }, () => {
+        supabase.from('join_requests')
+          .select('*')
+          .eq('room_id', roomId)
+          .eq('status', 'pending')
+          .then(({ data }) => {
+            if (data) set({ joinRequests: data as JoinRequest[] });
+          });
       });
     
     channel.subscribe(async (status) => {
       if (status === 'SUBSCRIBED') {
         await channel.track({ user_name: get().userName });
         
-        const [membersRes, messagesRes, requestsRes] = await Promise.all([
+        const [membersRes, messagesRes, requestsRes, joinReqRes] = await Promise.all([
           supabase.from('room_members').select('*').eq('room_id', roomId),
           supabase.from('room_messages').select('*').eq('room_id', roomId).order('created_at'),
           supabase.from('song_requests').select('*').eq('room_id', roomId).order('created_at'),
+          supabase.from('join_requests').select('*').eq('room_id', roomId).eq('status', 'pending'),
         ]);
         
         set({
           members: (membersRes.data || []) as RoomMember[],
           messages: (messagesRes.data || []) as RoomMessage[],
           songRequests: (requestsRes.data || []) as unknown as SongRequest[],
+          joinRequests: (joinReqRes.data || []) as JoinRequest[],
         });
       }
     });
     
     set({ channel });
+  },
+  
+  subscribeToPendingJoin: () => {
+    // Implemented inline in requestJoinRoom
   },
   
   unsubscribe: () => {
