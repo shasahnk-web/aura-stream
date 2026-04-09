@@ -1,93 +1,105 @@
 
 
-## Plan: Party Mode + Working Settings + Host Kick/End Room
+## Plan: Room Persistence, Host Controls & Sync Fixes
 
-Three areas to implement:
-
----
-
-### 1. Make Settings Actually Functional
-
-Currently settings are saved to localStorage but never consumed by the player or app. Wire them up:
-
-**`src/hooks/useSettings.ts`** (new): A small hook that reads `kanako-settings` from localStorage and returns the current settings object. Exposes a `getSettings()` function.
-
-**`src/components/MusicPlayer.tsx`**:
-- On mount and when settings change, read `kanako-settings` from localStorage
-- **Autoplay**: When `autoplay` is false, modify `onEnded` to NOT call `playNext()`
-- **Crossfade**: Set `crossfadeDuration` state from settings value instead of hardcoded 0
-- **Sleep Timer**: When `sleepTimerEnabled` is true, start a countdown timer using `sleepTimerDuration` from settings. When it hits 0, pause playback.
-
-**`src/index.css` / `src/App.tsx`**:
-- **Dark/Light theme**: The toggle already applies `light-theme` class. Add a `.light-theme` CSS section with inverted color variables so the toggle actually changes the UI appearance.
-
-**`src/services/musicApi.ts`** (or MusicPlayer):
-- **Playback quality**: The JioSaavn API returns multiple quality URLs. Map settings quality (low/medium/high/auto) to the appropriate bitrate URL when setting `audio.src`.
+### Summary
+Stop auto-leaving rooms on navigation, add host approval for joins, transfer host role, mute others, and fix sync drift.
 
 ---
 
-### 2. Party Mode in Together Room
+### 1. Together Page: Show Active Room Instead of Auto-Leaving
 
-**`src/store/roomStore.ts`**:
-- Add `partyMode` boolean to Room interface (already exists in DB as `party_mode`)
-- Add `broadcastPartyMode(enabled: boolean)` — broadcasts toggle + updates DB
-- Add `broadcastReaction(emoji: string)` — broadcasts reaction event to all users
-- Listen for `party_mode` and `reaction` broadcast events
+**`src/pages/TogetherPage.tsx`**:
+- Remove the `useEffect` that calls `leaveRoom` on mount (lines 27-32)
+- If `currentRoom` exists, show an "Active Room" card with:
+  - Room name and ID
+  - "Rejoin Room" button that navigates to `/room/{id}`
+  - "Leave Room" button that calls `leaveRoom` and resets to create/join UI
+- Only show create/join UI when `currentRoom` is null
+
+### 2. Fix Sync (Drift Correction Improvements)
 
 **`src/pages/RoomPage.tsx`**:
-- Add Party Mode toggle button (host only) in the header area
-- When party mode is ON:
-  - Show a reaction bar at the bottom of the now-playing section with emoji buttons: 🔥 👏 💥 🎉
-  - Floating emoji animations when reactions are received (CSS animation: float up and fade out)
-  - Album art pulses with a CSS animation synced to a simple beat interval
-  - Background gets a subtle color-shifting glow effect
-- Add a `partyMode` state that syncs from room broadcasts
-- Reaction display: maintain a temporary array of received reactions, render them as floating elements, remove after 2s
-
-**Beat-sync visuals** (lightweight, no Web Audio needed for MVP):
-- Use a CSS `@keyframes pulse` animation on album art when party mode is ON
-- Background glow uses `animation: party-glow 2s ease-in-out infinite alternate`
-- Add these keyframes to `src/index.css`
-
----
-
-### 3. Host Kick User + End Room
+- Reduce drift threshold from 2s to 1s for tighter sync
+- Add a periodic drift check interval (every 3s) for listeners that compares `Date.now() - started_at_ms` to `audio.currentTime` and corrects if off by >1s
+- On join, immediately seek to the host's current position using `started_at_ms`
 
 **`src/store/roomStore.ts`**:
-- Add `kickUser(userId: string)` — host deletes from `room_members`, broadcasts `kick` event with the kicked user's ID
-- Add `endRoom()` — host broadcasts `room_ended` event, deletes all room_members, deletes room from DB, resets store
-- Listen for `kick` broadcast: if current user's ID matches, auto-leave and navigate to `/together`
-- Listen for `room_ended` broadcast: auto-leave and navigate to `/together`
+- Increase host periodic sync from 10s to 5s
+- When a new member joins (detected via presence sync), immediately broadcast current playback state so the new user gets instant sync
+
+### 3. Host Can Mute Others' Music
+
+**`src/store/roomStore.ts`**:
+- Add `broadcastMuteUser(userId: string, muted: boolean)` - broadcasts a `mute_user` event
+- Listen for `mute_user` broadcast: if current user matches, set local audio volume to 0 (muted) or restore
 
 **`src/pages/RoomPage.tsx`**:
-- In the members/participants section, if `isHost`, show a ✕ button next to each non-host member to kick them
-- Add "End Room" button in the header (host only) with a confirmation prompt
-- On receiving `kick` or `room_ended` event, show a toast and redirect
+- In the members list, add a mute/unmute toggle button next to each non-host member (host only)
+- Track muted user IDs in local state
 
-**Database**: The existing RLS allows host to delete room and members can delete themselves. For kick, the host needs to delete other members' rows. Need a migration to update `room_members` DELETE policy to also allow the room host:
+### 4. Host Can Transfer Host Role
 
+**`src/store/roomStore.ts`**:
+- Add `transferHost(newHostId: string)` method:
+  - Updates `rooms.host_id` to the new user
+  - Broadcasts a `host_transfer` event with `{ newHostId }`
+- Listen for `host_transfer`: update `currentRoom.host_id` and `isHost` accordingly
+
+**`src/pages/RoomPage.tsx`**:
+- In the members list, add a "Make Host" button (crown icon) next to each non-host member (host only)
+- When clicked, calls `transferHost(userId)`
+
+### 5. Host Approval for Join Requests
+
+This requires a new table to store pending join requests.
+
+**Database migration**:
 ```sql
-DROP POLICY "Users can leave rooms" ON public.room_members;
-CREATE POLICY "Users or host can remove members" ON public.room_members
-  FOR DELETE TO authenticated
-  USING (
-    auth.uid() = user_id
-    OR EXISTS (
-      SELECT 1 FROM rooms WHERE rooms.id = room_members.room_id AND rooms.host_id = auth.uid()
-    )
-  );
+CREATE TABLE public.join_requests (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  room_id text NOT NULL REFERENCES rooms(id) ON DELETE CASCADE,
+  user_id uuid NOT NULL,
+  user_name text NOT NULL,
+  status text NOT NULL DEFAULT 'pending',
+  created_at timestamptz DEFAULT now()
+);
+ALTER TABLE public.join_requests ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Room members can view join requests"
+  ON public.join_requests FOR SELECT TO authenticated
+  USING (EXISTS (SELECT 1 FROM room_members WHERE room_members.room_id = join_requests.room_id AND room_members.user_id = auth.uid()));
+
+CREATE POLICY "Users can request to join"
+  ON public.join_requests FOR INSERT TO authenticated
+  WITH CHECK (auth.uid() = user_id);
+
+CREATE POLICY "Host can update join requests"
+  ON public.join_requests FOR UPDATE TO authenticated
+  USING (EXISTS (SELECT 1 FROM rooms WHERE rooms.id = join_requests.room_id AND rooms.host_id = auth.uid()));
 ```
 
----
+**`src/store/roomStore.ts`**:
+- Modify `joinRoom` flow: instead of inserting into `room_members` directly, insert into `join_requests` with status `pending`, then broadcast a `join_request` event to the host
+- Add `approveJoin(requestId, userId, userName, roomId)` - host approves: updates join_requests status, inserts into room_members, broadcasts `join_approved` to the requesting user
+- Add `rejectJoin(requestId)` - updates status to rejected, broadcasts `join_rejected`
+- Listen for `join_approved`: if matching user, complete the join (set currentRoom, subscribe)
+- Listen for `join_rejected`: show toast "Host denied your request"
 
-### Files Changed
+**`src/pages/RoomPage.tsx`**:
+- Add join requests section showing pending requests with Accept/Reject buttons (host only)
+- Subscribe to `join_requests` postgres changes for real-time updates
+
+**`src/pages/TogetherPage.tsx`**:
+- After attempting to join, show a "Waiting for host approval..." state instead of immediately navigating
+
+### 6. Files Changed
 
 | File | Changes |
 |---|---|
-| `src/index.css` | Add `.light-theme` color vars, party-mode keyframes |
-| `src/hooks/useSettings.ts` | New: hook to read settings from localStorage |
-| `src/components/MusicPlayer.tsx` | Wire autoplay, crossfade, sleep timer from settings |
-| `src/store/roomStore.ts` | Add partyMode, reactions, kick, endRoom |
-| `src/pages/RoomPage.tsx` | Party mode UI, reactions, kick buttons, end room button |
-| Migration | Update room_members DELETE RLS for host kick |
+| `src/pages/TogetherPage.tsx` | Show active room card instead of auto-leaving |
+| `src/store/roomStore.ts` | Add transferHost, broadcastMute, join approval flow, faster sync |
+| `src/pages/RoomPage.tsx` | Mute/make-host/join-request UI, tighter drift correction |
+| `src/integrations/supabase/types.ts` | Auto-updated with join_requests table |
+| Migration | Create `join_requests` table with RLS |
 
