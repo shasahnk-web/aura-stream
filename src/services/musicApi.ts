@@ -82,6 +82,7 @@ export async function fetchPlaylist(listId: string): Promise<{ name: string; ima
   try {
     const data = await edgeFetch({ action: 'jiosaavn-playlist', id: listId });
     const info = data.data || data;
+    if (info?.fallback) return { name: 'Playlist', image: '', songs: [] };
     const songList = info.songs || info.list || [];
     const songs = Array.isArray(songList) ? songList.map(mapSong).filter((s: Song) => s.url) : [];
     return {
@@ -97,6 +98,7 @@ export async function fetchPlaylist(listId: string): Promise<{ name: string; ima
 export async function searchSongs(query: string): Promise<Song[]> {
   try {
     const data = await edgeFetch({ action: 'jiosaavn-search', q: query, limit: '20' });
+    if (data?.data?.fallback) return [];
     const results = data.data?.results || data.results || [];
     return results.map(mapSong).filter((s: Song) => s.url);
   } catch {
