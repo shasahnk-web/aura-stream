@@ -63,9 +63,7 @@ export default function NowPlayingView({ open, onOpenChange, audioElement, onSee
           exit={{ y: '100%' }}
           transition={{ type: 'spring', damping: 30, stiffness: 300 }}
           className="fixed inset-0 z-[100] flex flex-col overflow-hidden"
-          style={{
-            background: 'linear-gradient(135deg, hsl(240 40% 8%), hsl(250 30% 18%))',
-          }}
+          style={{ background: 'var(--gradient-hero)' }}
         >
           {/* Header */}
           <div className="flex items-center justify-between px-6 pt-6 pb-4">
