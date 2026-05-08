@@ -63,9 +63,7 @@ export default function NowPlayingView({ open, onOpenChange, audioElement, onSee
           exit={{ y: '100%' }}
           transition={{ type: 'spring', damping: 30, stiffness: 300 }}
           className="fixed inset-0 z-[100] flex flex-col overflow-hidden"
-          style={{
-            background: 'linear-gradient(135deg, hsl(240 40% 8%), hsl(250 30% 18%))',
-          }}
+          style={{ background: 'var(--gradient-hero)' }}
         >
           {/* Header */}
           <div className="flex items-center justify-between px-6 pt-6 pb-4">
@@ -80,54 +78,58 @@ export default function NowPlayingView({ open, onOpenChange, audioElement, onSee
           </div>
 
           {/* Content */}
-          <div className="flex-1 flex flex-col items-center justify-center px-8 gap-8 max-w-lg mx-auto w-full">
-            {/* Album Art - floating like reference */}
-            <motion.div
-              initial={{ scale: 0.8, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              transition={{ delay: 0.1 }}
-              className="relative w-[280px] h-[280px] rounded-[20px] overflow-hidden floating"
-              style={{ boxShadow: '0 20px 50px hsl(0 0% 0% / 0.3)' }}
-            >
-              <img
-                src={currentSong.image}
-                alt={currentSong.name}
-                className={`w-full h-full object-cover ${isPlaying ? 'spinning' : ''}`}
-              />
-              <div className="absolute inset-0 bg-gradient-to-b from-black/10 to-black/50" />
-            </motion.div>
+          <div className="flex-1 flex flex-col items-center justify-center px-6 gap-6 max-w-lg mx-auto w-full">
+            {/* Circular Album Art with progress ring */}
+            <div className="relative w-[260px] h-[260px] sm:w-[300px] sm:h-[300px]">
+              {/* dotted track */}
+              <svg className="absolute inset-0 w-full h-full -rotate-90" viewBox="0 0 100 100">
+                <circle cx="50" cy="50" r="48" fill="none" stroke="hsl(var(--muted-foreground))" strokeOpacity="0.2" strokeWidth="0.6" strokeDasharray="0.5 2" />
+                <circle
+                  cx="50" cy="50" r="48" fill="none"
+                  stroke="hsl(var(--primary))" strokeWidth="1.2" strokeLinecap="round"
+                  strokeDasharray={`${(progress / 100) * 301.6} 301.6`}
+                  style={{ filter: 'drop-shadow(0 0 6px hsl(var(--primary)))' }}
+                />
+              </svg>
+              <motion.div
+                initial={{ scale: 0.85, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                className="absolute inset-4 rounded-full overflow-hidden shadow-2xl"
+                style={{ boxShadow: '0 20px 60px hsl(8 85% 58% / 0.4)' }}
+              >
+                <img
+                  src={currentSong.image}
+                  alt={currentSong.name}
+                  className={`w-full h-full object-cover ${isPlaying ? 'spinning' : ''}`}
+                />
+              </motion.div>
+            </div>
 
             {/* Song Info */}
-            <div className="text-center w-full">
-              <h2 className="text-2xl font-bold text-foreground truncate">
-                {currentSong.name}
-              </h2>
-              <p className="text-base text-muted-foreground mt-1 truncate">{currentSong.artist}</p>
+            <div className="text-center w-full px-4">
+              <p className="text-sm text-muted-foreground">By {currentSong.artist}</p>
+              <h2 className="text-2xl font-bold text-foreground truncate mt-1">{currentSong.name}</h2>
             </div>
 
             {/* Progress */}
-            <div className="w-full">
-              <div className="flex justify-between mb-2">
-                <span className="text-xs text-muted-foreground">{formatTime(currentTime)}</span>
-                <span className="text-xs text-muted-foreground">{formatTime(duration)}</span>
-              </div>
-              <div className="relative w-full h-1 bg-white/10 rounded-sm overflow-visible">
+            <div className="w-full px-2">
+              <div className="relative w-full h-1.5 bg-white/10 rounded-full overflow-visible">
                 <div
-                  className="h-full rounded-sm relative"
-                  style={{
-                    width: `${progress}%`,
-                    background: 'var(--gradient-primary)',
-                  }}
+                  className="h-full rounded-full relative"
+                  style={{ width: `${progress}%`, background: 'var(--gradient-primary)' }}
                 >
                   <div className="absolute right-0 top-1/2 -translate-y-1/2 w-3 h-3 bg-white rounded-full shadow-lg" />
                 </div>
+                <input
+                  type="range" min={0} max={duration || 0} value={currentTime}
+                  onChange={handleSeek}
+                  className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                />
               </div>
-              <input
-                type="range" min={0} max={duration || 0} value={currentTime}
-                onChange={handleSeek}
-                className="w-full h-1 absolute opacity-0 cursor-pointer"
-                style={{ marginTop: '-6px' }}
-              />
+              <div className="flex justify-between mt-2">
+                <span className="text-xs text-muted-foreground">{formatTime(currentTime)}</span>
+                <span className="text-xs text-muted-foreground">{formatTime(duration)}</span>
+              </div>
             </div>
 
             {/* Controls */}

@@ -50,18 +50,37 @@ export default function HomePage() {
     return `Night ${name}`;
   };
 
+  const categories = ['All', 'Popular', 'Trending', 'New Release'];
+  const [activeCat, setActiveCat] = useState('All');
+
   return (
     <div className="flex-1 overflow-y-auto scrollbar-thin pb-36 md:pb-28 px-4 md:px-6 pt-5">
-      {/* Greeting */}
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5 }}
-        className="mb-6"
+        className="mb-5"
       >
         <h1 className="text-2xl md:text-3xl font-bold font-display text-foreground">{greeting()}</h1>
         <p className="text-muted-foreground text-sm mt-1">Discover your next favorite track</p>
       </motion.div>
+
+      <div className="flex gap-2 mb-6 overflow-x-auto scrollbar-hide pb-2">
+        {categories.map((c) => (
+          <button
+            key={c}
+            onClick={() => setActiveCat(c)}
+            className={`px-5 py-2 rounded-full text-sm font-semibold whitespace-nowrap transition-all ${
+              activeCat === c
+                ? 'bg-primary text-primary-foreground shadow-lg'
+                : 'bg-secondary/50 text-muted-foreground hover:text-foreground'
+            }`}
+            style={activeCat === c ? { boxShadow: '0 6px 18px hsl(8 85% 58% / 0.45)' } : undefined}
+          >
+            {c}
+          </button>
+        ))}
+      </div>
 
       {/* Friends Activity */}
       <FriendsActivity />
