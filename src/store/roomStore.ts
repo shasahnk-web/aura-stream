@@ -576,8 +576,7 @@ export const useRoomStore = create<RoomState>((set, get) => ({
     });
     
     // Join request broadcast (for host to see)
-    channel.on('broadcast', { event: 'join_request' }, () => {
-      // Refresh join requests from DB
+    channel.on('broadcast', { event: 'join_request' }, ({ payload }) => {
       supabase.from('join_requests')
         .select('*')
         .eq('room_id', roomId)
@@ -585,6 +584,7 @@ export const useRoomStore = create<RoomState>((set, get) => ({
         .then(({ data }) => {
           if (data) set({ joinRequests: data as JoinRequest[] });
         });
+      window.dispatchEvent(new CustomEvent('kanako-join-request', { detail: payload }));
     });
     
     // Presence
