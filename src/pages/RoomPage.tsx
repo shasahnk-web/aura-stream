@@ -141,7 +141,7 @@ export default function RoomPage() {
     return () => clearInterval(interval);
   }, [currentRoom?.id, isHost]);
   
-  // Host: periodic sync broadcast every 5s
+  // Host: periodic sync broadcast every 2s
   useEffect(() => {
     if (!isHost || !currentRoom) return;
     const interval = setInterval(() => {
@@ -150,9 +150,29 @@ export default function RoomPage() {
         const { updatePlayback } = useRoomStore.getState();
         updatePlayback(playerState.currentSong, playerState.isPlaying, playerState.currentTime);
       }
-    }, 5000);
+    }, 2000);
     return () => clearInterval(interval);
   }, [isHost, currentRoom]);
+
+  // Host: notification sound on new join requests
+  const lastJoinNotifyRef = useRef(0);
+  useEffect(() => {
+    if (!isHost) return;
+    const onJoinReq = (e: Event) => {
+      const now = Date.now();
+      if (now - lastJoinNotifyRef.current < 1500) return;
+      lastJoinNotifyRef.current = now;
+      const detail = (e as CustomEvent).detail || {};
+      try {
+        const a = new Audio('https://cdn.jsdelivr.net/gh/akx/Notifications@master/notify.mp3');
+        a.volume = 0.5;
+        a.play().catch(() => {});
+      } catch {}
+      toast.info(`${detail.userName || 'Someone'} wants to join`);
+    };
+    window.addEventListener('kanako-join-request', onJoinReq);
+    return () => window.removeEventListener('kanako-join-request', onJoinReq);
+  }, [isHost]);
   
   // Auto-scroll chat
   useEffect(() => {
