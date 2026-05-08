@@ -15,8 +15,8 @@ async function edgeFetch(params: Record<string, string>) {
   });
 
   if (!res.ok) {
-    const err = await res.json().catch(() => ({ error: 'Unknown error' }));
-    throw new Error(err.error || `API error ${res.status}`);
+    // Don't throw — return fallback shape so UI doesn't blank out
+    return { data: { songs: [], results: [], fallback: true } };
   }
 
   return res.json();
