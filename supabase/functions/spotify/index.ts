@@ -32,8 +32,7 @@ async function spotifyFetch(path: string, token: string) {
   return res.json();
 }
 
-// ----- JioSaavn direct integration -----
-const JIO_BASE = 'https://www.jiosaavn.com/api.php';
+// ----- JioSaavn integration with multi-endpoint fallback -----
 const DES_KEY = '38346591';
 
 function decryptUrl(encrypted: string): string {
@@ -41,14 +40,11 @@ function decryptUrl(encrypted: string): string {
     const key = CryptoJS.enc.Utf8.parse(DES_KEY);
     const enc = CryptoJS.enc.Base64.parse(encrypted);
     const decrypted = CryptoJS.DES.decrypt(
-      { ciphertext: enc } as any,
-      key,
+      { ciphertext: enc } as any, key,
       { mode: CryptoJS.mode.ECB, padding: CryptoJS.pad.Pkcs7 }
     );
     return decrypted.toString(CryptoJS.enc.Utf8);
-  } catch {
-    return '';
-  }
+  } catch { return ''; }
 }
 
 function buildDownloadUrls(encryptedUrl: string, has320: boolean) {
@@ -57,13 +53,8 @@ function buildDownloadUrls(encryptedUrl: string, has320: boolean) {
   const qualities = has320
     ? ['12kbps', '48kbps', '96kbps', '160kbps', '320kbps']
     : ['12kbps', '48kbps', '96kbps', '160kbps'];
-  const bitrateMap: Record<string, string> = {
-    '12kbps': '_12', '48kbps': '_48', '96kbps': '_96', '160kbps': '_160', '320kbps': '_320',
-  };
-  return qualities.map(q => ({
-    quality: q,
-    url: url.replace('_96', bitrateMap[q]),
-  }));
+  const map: Record<string, string> = { '12kbps':'_12','48kbps':'_48','96kbps':'_96','160kbps':'_160','320kbps':'_320' };
+  return qualities.map(q => ({ quality: q, url: url.replace('_96', map[q]) }));
 }
 
 function imgVariants(image: string) {
@@ -80,47 +71,83 @@ function mapJioSong(s: any) {
   const has320 = mi['320kbps'] === 'true' || mi['320kbps'] === true;
   return {
     id: s.id,
-    name: s.title || s.song,
+    name: s.title || s.song || s.name,
     duration: parseInt(mi.duration || s.duration || '0', 10),
     image: imgVariants(s.image || ''),
     downloadUrl: buildDownloadUrls(mi.encrypted_media_url || '', has320),
-    album: { name: mi.album || '' },
-    artists: {
-      primary: (mi.artistMap?.primary_artists || []).map((a: any) => ({ id: a.id, name: a.name })),
-    },
+    album: { name: mi.album || s.album || '' },
+    artists: { primary: (mi.artistMap?.primary_artists || []).map((a: any) => ({ id: a.id, name: a.name })) },
   };
 }
 
-async function jioGet(params: Record<string, string>) {
-  const qs = new URLSearchParams({
-    _format: 'json', _marker: '0', api_version: '4', ctx: 'web6dot0', ...params,
-  });
-  const res = await fetch(`${JIO_BASE}?${qs}`, {
+async function fetchWithTimeout(url: string, opts: RequestInit = {}, timeoutMs = 8000) {
+  const ctrl = new AbortController();
+  const t = setTimeout(() => ctrl.abort(), timeoutMs);
+  try {
+    return await fetch(url, { ...opts, signal: ctrl.signal });
+  } finally { clearTimeout(t); }
+}
+
+async function jioOfficial(params: Record<string, string>) {
+  const qs = new URLSearchParams({ _format:'json',_marker:'0',api_version:'4',ctx:'web6dot0', ...params });
+  const res = await fetchWithTimeout(`https://www.jiosaavn.com/api.php?${qs}`, {
     headers: { 'User-Agent': 'Mozilla/5.0', 'Accept': 'application/json' },
   });
-  if (!res.ok) throw new Error(`JioSaavn ${res.status}`);
+  if (!res.ok) throw new Error(`jiosaavn.com ${res.status}`);
   const text = await res.text();
   return JSON.parse(text.replace(/\)\]\}',?\n?/, ''));
 }
 
+async function saavnDevPlaylist(id: string) {
+  const res = await fetchWithTimeout(`https://saavn.dev/api/playlists?id=${id}&limit=50`);
+  if (!res.ok) throw new Error(`saavn.dev ${res.status}`);
+  const j = await res.json();
+  if (!j?.success) throw new Error('saavn.dev unsuccessful');
+  return j.data;
+}
+
+async function saavnDevSearch(q: string, limit: string) {
+  const res = await fetchWithTimeout(`https://saavn.dev/api/search/songs?query=${encodeURIComponent(q)}&limit=${limit}`);
+  if (!res.ok) throw new Error(`saavn.dev ${res.status}`);
+  const j = await res.json();
+  if (!j?.success) throw new Error('saavn.dev unsuccessful');
+  return j.data;
+}
+
 async function jioPlaylist(id: string) {
-  const data = await jioGet({ __call: 'playlist.getDetails', listid: id });
-  const songs = (data.list || []).map(mapJioSong);
-  return {
-    data: {
-      id: data.id,
-      name: data.title,
-      image: imgVariants(data.image || ''),
-      songCount: data.list_count,
-      songs,
-    },
-  };
+  // Try official first
+  try {
+    const data = await jioOfficial({ __call: 'playlist.getDetails', listid: id });
+    const songs = (data.list || []).map(mapJioSong);
+    return { data: { id: data.id, name: data.title, image: imgVariants(data.image || ''), songCount: data.list_count, songs } };
+  } catch (e1) {
+    console.warn('jio official playlist failed:', (e1 as Error).message);
+    // Fallback: saavn.dev
+    try {
+      const d = await saavnDevPlaylist(id);
+      return { data: { id: d.id, name: d.name, image: d.image, songCount: d.songCount, songs: d.songs || [] } };
+    } catch (e2) {
+      console.warn('saavn.dev playlist failed:', (e2 as Error).message);
+      return { data: { id, name: 'Unavailable', image: [], songCount: 0, songs: [], fallback: true, error: 'JIOSAAVN_UNAVAILABLE' } };
+    }
+  }
 }
 
 async function jioSearch(q: string, limit: string) {
-  const data = await jioGet({ __call: 'search.getResults', q, n: limit, p: '1' });
-  const results = (data.results || []).map(mapJioSong);
-  return { data: { total: data.total, results } };
+  try {
+    const data = await jioOfficial({ __call: 'search.getResults', q, n: limit, p: '1' });
+    const results = (data.results || []).map(mapJioSong);
+    return { data: { total: data.total, results } };
+  } catch (e1) {
+    console.warn('jio official search failed:', (e1 as Error).message);
+    try {
+      const d = await saavnDevSearch(q, limit);
+      return { data: { total: d.total, results: d.results || [] } };
+    } catch (e2) {
+      console.warn('saavn.dev search failed:', (e2 as Error).message);
+      return { data: { total: 0, results: [], fallback: true, error: 'JIOSAAVN_UNAVAILABLE' } };
+    }
+  }
 }
 
 Deno.serve(async (req) => {
@@ -183,8 +210,9 @@ Deno.serve(async (req) => {
     });
   } catch (error) {
     console.error('Edge function error:', error);
-    return new Response(JSON.stringify({ error: (error as Error).message }), {
-      status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    // Return 200 with fallback flag so frontend doesn't crash
+    return new Response(JSON.stringify({ data: { songs: [], results: [], fallback: true }, error: (error as Error).message }), {
+      status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
   }
 });
