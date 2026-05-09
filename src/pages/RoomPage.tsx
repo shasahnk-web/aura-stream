@@ -158,17 +158,21 @@ export default function RoomPage() {
   const lastJoinNotifyRef = useRef(0);
   useEffect(() => {
     if (!isHost) return;
-    const onJoinReq = (e: Event) => {
+    const onJoinReq = async (e: Event) => {
       const now = Date.now();
       if (now - lastJoinNotifyRef.current < 1500) return;
       lastJoinNotifyRef.current = now;
       const detail = (e as CustomEvent).detail || {};
-      try {
-        const a = new Audio('https://cdn.jsdelivr.net/gh/akx/Notifications@master/notify.mp3');
-        a.volume = 0.5;
-        a.play().catch(() => {});
-      } catch {}
-      toast.info(`${detail.userName || 'Someone'} wants to join`);
+      const { shouldNotify } = await import('@/hooks/useSettings');
+      const { toast: showToast, sound } = shouldNotify('joinRequests');
+      if (sound) {
+        try {
+          const a = new Audio('https://cdn.jsdelivr.net/gh/akx/Notifications@master/notify.mp3');
+          a.volume = 0.5;
+          a.play().catch(() => {});
+        } catch {}
+      }
+      if (showToast) toast.info(`${detail.userName || 'Someone'} wants to join`);
     };
     window.addEventListener('kanako-join-request', onJoinReq);
     return () => window.removeEventListener('kanako-join-request', onJoinReq);
