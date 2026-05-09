@@ -1,57 +1,30 @@
-import { useState, useEffect } from 'react';
-import { Settings, Moon, Sun, Volume2, Timer, ChevronRight, Music } from 'lucide-react';
+import { useEffect } from 'react';
+import { Settings, Moon, Sun, Volume2, Timer, Music, Bell, BellOff } from 'lucide-react';
 import { Switch } from '@/components/ui/switch';
 import { Slider } from '@/components/ui/slider';
+import { Input } from '@/components/ui/input';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
-
-type Theme = 'dark' | 'light';
-type PlaybackQuality = 'low' | 'medium' | 'high' | 'auto';
-
-interface SettingsState {
-  theme: Theme;
-  playbackQuality: PlaybackQuality;
-  sleepTimerEnabled: boolean;
-  sleepTimerDuration: number;
-  autoplay: boolean;
-  crossfade: number;
-}
-
-const DEFAULT_SETTINGS: SettingsState = {
-  theme: 'dark',
-  playbackQuality: 'high',
-  sleepTimerEnabled: false,
-  sleepTimerDuration: 30,
-  autoplay: true,
-  crossfade: 0,
-};
-
-function loadSettings(): SettingsState {
-  try {
-    const data = localStorage.getItem('kanako-settings');
-    return data ? { ...DEFAULT_SETTINGS, ...JSON.parse(data) } : DEFAULT_SETTINGS;
-  } catch {
-    return DEFAULT_SETTINGS;
-  }
-}
-
-function saveSettings(settings: SettingsState) {
-  localStorage.setItem('kanako-settings', JSON.stringify(settings));
-}
+import {
+  AppSettings, NotificationPrefs, PlaybackQuality,
+  getSettings, saveSettings, useSettings,
+} from '@/hooks/useSettings';
 
 export default function SettingsPage() {
-  const [settings, setSettings] = useState<SettingsState>(loadSettings);
+  const settings = useSettings();
 
   useEffect(() => {
-    saveSettings(settings);
-    // Apply theme
     document.documentElement.classList.toggle('light-theme', settings.theme === 'light');
-  }, [settings]);
+  }, [settings.theme]);
 
-  const updateSetting = <K extends keyof SettingsState>(key: K, value: SettingsState[K]) => {
-    setSettings(prev => ({ ...prev, [key]: value }));
+  const update = <K extends keyof AppSettings>(key: K, value: AppSettings[K]) => {
+    saveSettings({ ...getSettings(), [key]: value });
+  };
+  const updateNotif = <K extends keyof NotificationPrefs>(key: K, value: NotificationPrefs[K]) => {
+    const cur = getSettings();
+    saveSettings({ ...cur, notifications: { ...cur.notifications, [key]: value } });
   };
 
   const qualityOptions = [
@@ -60,13 +33,12 @@ export default function SettingsPage() {
     { value: 'high', label: '320 kbps', desc: 'Best quality' },
     { value: 'auto', label: 'Auto', desc: 'Adapts to network' },
   ];
-
   const timerPresets = [15, 30, 45, 60, 90, 120];
+  const n = settings.notifications;
 
   return (
     <ScrollArea className="flex-1 p-4 md:p-6 pb-32">
       <div className="max-w-2xl mx-auto space-y-6">
-        {/* Header */}
         <div className="flex items-center gap-3 mb-8">
           <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-primary to-accent flex items-center justify-center">
             <Settings className="w-6 h-6 text-primary-foreground" />
@@ -86,7 +58,7 @@ export default function SettingsPage() {
             </CardTitle>
             <CardDescription>Customize how KanaKö looks</CardDescription>
           </CardHeader>
-          <CardContent className="space-y-4">
+          <CardContent>
             <div className="flex items-center justify-between">
               <div className="space-y-0.5">
                 <Label className="text-foreground font-medium">Dark Mode</Label>
@@ -94,8 +66,70 @@ export default function SettingsPage() {
               </div>
               <Switch
                 checked={settings.theme === 'dark'}
-                onCheckedChange={(checked) => updateSetting('theme', checked ? 'dark' : 'light')}
+                onCheckedChange={(c) => update('theme', c ? 'dark' : 'light')}
               />
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Notifications */}
+        <Card className="glass border-border/30">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-lg flex items-center gap-2">
+              {n.soundEnabled ? <Bell className="w-5 h-5 text-primary" /> : <BellOff className="w-5 h-5 text-muted-foreground" />}
+              Notifications
+            </CardTitle>
+            <CardDescription>Control sounds and which alerts you see</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-5">
+            <div className="flex items-center justify-between">
+              <div className="space-y-0.5">
+                <Label className="text-foreground font-medium">Notification sound</Label>
+                <p className="text-xs text-muted-foreground">Play a sound for incoming alerts</p>
+              </div>
+              <Switch checked={n.soundEnabled} onCheckedChange={(c) => updateNotif('soundEnabled', c)} />
+            </div>
+
+            <div className="space-y-3 pt-2 border-t border-border/30">
+              <p className="text-xs uppercase tracking-wider text-muted-foreground">Categories</p>
+              {[
+                { k: 'joinRequests' as const, label: 'Join requests', desc: 'When someone asks to join your room' },
+                { k: 'playlistUpdates' as const, label: 'Playlist updates', desc: 'Changes to playlists you follow' },
+                { k: 'newReleases' as const, label: 'New releases', desc: 'New music from artists you like' },
+              ].map(({ k, label, desc }) => (
+                <div key={k} className="flex items-center justify-between">
+                  <div className="space-y-0.5">
+                    <Label className="text-foreground font-medium">{label}</Label>
+                    <p className="text-xs text-muted-foreground">{desc}</p>
+                  </div>
+                  <Switch checked={n[k]} onCheckedChange={(c) => updateNotif(k, c)} />
+                </div>
+              ))}
+            </div>
+
+            <div className="space-y-3 pt-2 border-t border-border/30">
+              <div className="flex items-center justify-between">
+                <div className="space-y-0.5">
+                  <Label className="text-foreground font-medium">Quiet hours</Label>
+                  <p className="text-xs text-muted-foreground">Mute notification sounds during this window</p>
+                </div>
+                <Switch
+                  checked={n.quietHoursEnabled}
+                  onCheckedChange={(c) => updateNotif('quietHoursEnabled', c)}
+                />
+              </div>
+              {n.quietHoursEnabled && (
+                <div className="grid grid-cols-2 gap-3 pt-1">
+                  <div className="space-y-1">
+                    <Label className="text-xs text-muted-foreground">From</Label>
+                    <Input type="time" value={n.quietStart} onChange={(e) => updateNotif('quietStart', e.target.value)} />
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs text-muted-foreground">To</Label>
+                    <Input type="time" value={n.quietEnd} onChange={(e) => updateNotif('quietEnd', e.target.value)} />
+                  </div>
+                </div>
+              )}
             </div>
           </CardContent>
         </Card>
@@ -112,7 +146,7 @@ export default function SettingsPage() {
           <CardContent>
             <RadioGroup
               value={settings.playbackQuality}
-              onValueChange={(v) => updateSetting('playbackQuality', v as PlaybackQuality)}
+              onValueChange={(v) => update('playbackQuality', v as PlaybackQuality)}
               className="space-y-3"
             >
               {qualityOptions.map((opt) => (
@@ -123,20 +157,16 @@ export default function SettingsPage() {
                       ? 'border-primary/50 bg-primary/10'
                       : 'border-border/30 hover:bg-secondary/30'
                   }`}
-                  onClick={() => updateSetting('playbackQuality', opt.value as PlaybackQuality)}
+                  onClick={() => update('playbackQuality', opt.value as PlaybackQuality)}
                 >
                   <div className="flex items-center gap-3">
                     <RadioGroupItem value={opt.value} id={opt.value} />
                     <div>
-                      <Label htmlFor={opt.value} className="text-foreground font-medium cursor-pointer">
-                        {opt.label}
-                      </Label>
+                      <Label htmlFor={opt.value} className="text-foreground font-medium cursor-pointer">{opt.label}</Label>
                       <p className="text-xs text-muted-foreground">{opt.desc}</p>
                     </div>
                   </div>
-                  {settings.playbackQuality === opt.value && (
-                    <div className="w-2 h-2 rounded-full bg-primary" />
-                  )}
+                  {settings.playbackQuality === opt.value && <div className="w-2 h-2 rounded-full bg-primary" />}
                 </div>
               ))}
             </RadioGroup>
@@ -160,10 +190,9 @@ export default function SettingsPage() {
               </div>
               <Switch
                 checked={settings.sleepTimerEnabled}
-                onCheckedChange={(checked) => updateSetting('sleepTimerEnabled', checked)}
+                onCheckedChange={(c) => update('sleepTimerEnabled', c)}
               />
             </div>
-
             {settings.sleepTimerEnabled && (
               <div className="space-y-4 pt-2">
                 <div className="flex items-center justify-between">
@@ -172,17 +201,14 @@ export default function SettingsPage() {
                 </div>
                 <Slider
                   value={[settings.sleepTimerDuration]}
-                  onValueChange={([v]) => updateSetting('sleepTimerDuration', v)}
-                  min={5}
-                  max={120}
-                  step={5}
-                  className="w-full"
+                  onValueChange={([v]) => update('sleepTimerDuration', v)}
+                  min={5} max={120} step={5}
                 />
                 <div className="flex flex-wrap gap-2">
                   {timerPresets.map((mins) => (
                     <button
                       key={mins}
-                      onClick={() => updateSetting('sleepTimerDuration', mins)}
+                      onClick={() => update('sleepTimerDuration', mins)}
                       className={`px-3 py-1.5 rounded-full text-xs font-medium transition-all ${
                         settings.sleepTimerDuration === mins
                           ? 'bg-primary text-primary-foreground'
@@ -198,7 +224,7 @@ export default function SettingsPage() {
           </CardContent>
         </Card>
 
-        {/* Playback Settings */}
+        {/* Playback */}
         <Card className="glass border-border/30">
           <CardHeader className="pb-3">
             <CardTitle className="text-lg flex items-center gap-2">
@@ -213,12 +239,8 @@ export default function SettingsPage() {
                 <Label className="text-foreground font-medium">Autoplay</Label>
                 <p className="text-xs text-muted-foreground">Play recommended songs automatically</p>
               </div>
-              <Switch
-                checked={settings.autoplay}
-                onCheckedChange={(checked) => updateSetting('autoplay', checked)}
-              />
+              <Switch checked={settings.autoplay} onCheckedChange={(c) => update('autoplay', c)} />
             </div>
-
             <div className="space-y-3 pt-2">
               <div className="flex items-center justify-between">
                 <div className="space-y-0.5">
@@ -231,17 +253,13 @@ export default function SettingsPage() {
               </div>
               <Slider
                 value={[settings.crossfade]}
-                onValueChange={([v]) => updateSetting('crossfade', v)}
-                min={0}
-                max={12}
-                step={1}
-                className="w-full"
+                onValueChange={([v]) => update('crossfade', v)}
+                min={0} max={12} step={1}
               />
             </div>
           </CardContent>
         </Card>
 
-        {/* App Info */}
         <div className="text-center py-6 text-muted-foreground text-xs space-y-1">
           <p className="font-medium text-foreground">KanaKö by TRMS</p>
           <p>Version 1.0.0</p>
