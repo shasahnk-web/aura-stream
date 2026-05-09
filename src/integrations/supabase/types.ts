@@ -329,6 +329,14 @@ export type Database = {
           name: string
         }[]
       }
+      get_room_member_profile: {
+        Args: { _user_id: string }
+        Returns: {
+          avatar_url: string
+          id: string
+          name: string
+        }[]
+      }
     }
     Enums: {
       [_ in never]: never
