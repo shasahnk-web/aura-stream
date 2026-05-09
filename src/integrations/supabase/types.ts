@@ -337,6 +337,7 @@ export type Database = {
           name: string
         }[]
       }
+      realtime_topic_room_id: { Args: { topic: string }; Returns: string }
     }
     Enums: {
       [_ in never]: never
