@@ -337,6 +337,7 @@ export type Database = {
           name: string
         }[]
       }
+      realtime_can_access: { Args: { topic: string }; Returns: boolean }
       realtime_topic_room_id: { Args: { topic: string }; Returns: string }
     }
     Enums: {
