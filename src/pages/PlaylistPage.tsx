@@ -36,8 +36,33 @@ export default function PlaylistPage() {
 
   const totalDuration = data?.songs?.reduce((acc, s) => acc + s.duration, 0) || 0;
 
+  const playlistName = data?.name || 'Playlist';
+  const playlistDesc = data?.songs?.length
+    ? `Listen to ${playlistName} — ${data.songs.length} tracks on KanaKö. Stream free, no ads.`
+    : `Listen to ${playlistName} on KanaKö — free music streaming, no ads.`;
+
   return (
     <div className="flex-1 overflow-y-auto scrollbar-thin pb-28">
+      <SEO
+        title={`${playlistName} — KanaKö`}
+        description={playlistDesc}
+        path={`/playlist/${id}`}
+        image={data?.image}
+        type="music.playlist"
+        jsonLd={data ? {
+          '@context': 'https://schema.org',
+          '@type': 'MusicPlaylist',
+          name: playlistName,
+          numTracks: data.songs?.length || 0,
+          image: data.image,
+          track: (data.songs || []).slice(0, 20).map(s => ({
+            '@type': 'MusicRecording',
+            name: s.name,
+            byArtist: { '@type': 'MusicGroup', name: s.artist },
+            duration: `PT${s.duration}S`,
+          })),
+        } : undefined}
+      />
       {/* Hero */}
       <div className="relative">
         {data?.image && (
