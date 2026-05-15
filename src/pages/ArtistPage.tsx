@@ -3,6 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import { spotifyArtist, spotifyArtistTopTracks, spotifyTrackToSong, SpotifyTrack, SpotifyArtist } from '@/services/spotifyApi';
 import { usePlayerStore, Song } from '@/store/playerStore';
 import SongCard from '@/components/SongCard';
+import SEO from '@/components/SEO';
 import { Play, Users, Music2 } from 'lucide-react';
 import { motion } from 'framer-motion';
 
