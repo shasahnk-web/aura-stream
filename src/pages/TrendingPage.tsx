@@ -1,4 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
+import SEO from '@/components/SEO';
 import { fetchPlaylist } from '@/services/musicApi';
 import { usePlayerStore } from '@/store/playerStore';
 import SongCard from '@/components/SongCard';
@@ -39,6 +40,7 @@ export default function TrendingPage() {
 
   return (
     <div className="flex-1 overflow-y-auto scrollbar-thin pb-36 md:pb-28">
+      <SEO title="Trending Now — KanaKö" description="Today's hottest tracks. See what the world is listening to and stream every song instantly." path="/trending" />
       {/* Hero */}
       <div className="relative px-4 md:px-8 pt-6 pb-6">
         <div className="absolute inset-0 h-[250px] bg-gradient-to-b from-primary/20 to-transparent" />

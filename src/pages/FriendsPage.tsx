@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
+import SEO from '@/components/SEO';
 import { Users, UserPlus, Check, X, Music, MessageCircle, ArrowLeft, Send, ChevronRight } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Button } from '@/components/ui/button';
@@ -275,6 +276,7 @@ export default function FriendsPage() {
   if (!user) {
     return (
       <div className="flex-1 flex flex-col items-center justify-center p-4">
+      <SEO title="Friends & Activity — KanaKö" description="See what your friends are listening to right now and chat about music in real time." path="/friends" />
         <Users className="w-16 h-16 text-muted-foreground mb-4" />
         <h2 className="text-xl font-semibold mb-2">Sign in to see friends</h2>
         <Button onClick={() => setAuthOpen(true)}>Sign In</Button>

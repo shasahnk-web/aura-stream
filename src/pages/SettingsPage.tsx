@@ -1,4 +1,5 @@
 import { useEffect } from 'react';
+import SEO from '@/components/SEO';
 import { Settings, Moon, Sun, Volume2, Timer, Music, Bell, BellOff } from 'lucide-react';
 import { Switch } from '@/components/ui/switch';
 import { Slider } from '@/components/ui/slider';
@@ -38,6 +39,7 @@ export default function SettingsPage() {
 
   return (
     <ScrollArea className="flex-1 p-4 md:p-6 pb-32">
+      <SEO title="Settings — KanaKö" description="Configure playback quality, crossfade, sleep timer, notifications, and quiet hours." path="/settings" />
       <div className="max-w-2xl mx-auto space-y-6">
         <div className="flex items-center gap-3 mb-8">
           <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-primary to-accent flex items-center justify-center">

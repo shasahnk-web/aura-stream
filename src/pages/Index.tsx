@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import SEO from '@/components/SEO';
 import { useQuery } from '@tanstack/react-query';
 import { fetchPlaylist, FEATURED_PLAYLISTS } from '@/services/musicApi';
 import PlaylistCardRef from '@/components/PlaylistCardRef';
@@ -55,6 +56,7 @@ export default function HomePage() {
 
   return (
     <div className="flex-1 overflow-y-auto scrollbar-thin pb-36 md:pb-28 px-4 md:px-6 pt-5">
+      <SEO title="KanaKö — Free Music Streaming, No Ads" description="Stream and download unlimited free music. Discover trending songs, build playlists, and listen together with friends." path="/" />
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
