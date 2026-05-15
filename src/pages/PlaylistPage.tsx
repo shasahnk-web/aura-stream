@@ -3,6 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import { fetchPlaylist } from '@/services/musicApi';
 import { usePlayerStore } from '@/store/playerStore';
 import SongCard from '@/components/SongCard';
+import SEO from '@/components/SEO';
 import { Play, Shuffle, Clock, ArrowLeft } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
