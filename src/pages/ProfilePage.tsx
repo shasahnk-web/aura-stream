@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
+import SEO from '@/components/SEO';
 import { useAuthStore } from '@/store/authStore';
 import { supabase } from '@/integrations/supabase/client';
 import { useLikedStore } from '@/store/playerStore';
@@ -76,6 +77,7 @@ export default function ProfilePage() {
   if (!user) {
     return (
       <div className="flex-1 flex items-center justify-center px-4">
+      <SEO title="Your Profile — KanaKö" description="View and edit your KanaKö profile, listening stats, and account preferences." path="/profile" />
         <div className="text-center glass rounded-2xl p-8 max-w-sm w-full">
           <div className="w-20 h-20 rounded-full mx-auto mb-4 flex items-center justify-center" style={{ background: 'var(--gradient-primary)' }}>
             <User className="w-8 h-8 text-primary-foreground" />

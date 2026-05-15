@@ -3,6 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import { spotifyArtist, spotifyArtistTopTracks, spotifyTrackToSong, SpotifyTrack, SpotifyArtist } from '@/services/spotifyApi';
 import { usePlayerStore, Song } from '@/store/playerStore';
 import SongCard from '@/components/SongCard';
+import SEO from '@/components/SEO';
 import { Play, Users, Music2 } from 'lucide-react';
 import { motion } from 'framer-motion';
 
@@ -75,6 +76,21 @@ export default function ArtistPage() {
 
   return (
     <div className="flex-1 overflow-y-auto scrollbar-thin pb-36 md:pb-28">
+      <SEO
+        title={`${artist.name} — KanaKö`}
+        description={`Listen to top tracks by ${artist.name} on KanaKö. ${followers.toLocaleString()} followers. Stream free, no ads.`}
+        path={`/artist/${id}`}
+        image={artistImage}
+        type="music.musician"
+        jsonLd={{
+          '@context': 'https://schema.org',
+          '@type': 'MusicGroup',
+          name: artist.name,
+          image: artistImage,
+          genre: artist.genres || [],
+          url: `https://aura-melody-hub.lovable.app/artist/${id}`,
+        }}
+      />
       {/* Hero Banner */}
       <div className="relative h-64 md:h-80 overflow-hidden">
         {artistImage && (

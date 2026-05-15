@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import SEO from '@/components/SEO';
 import { useQuery } from '@tanstack/react-query';
 import { fetchPlaylist, FEATURED_PLAYLISTS } from '@/services/musicApi';
 import { useLikedStore, usePlayerStore, Song } from '@/store/playerStore';
@@ -42,6 +43,7 @@ export default function LibraryPage() {
 
   return (
     <div className="flex-1 overflow-y-auto scrollbar-thin pb-36 md:pb-28 px-4 md:px-6 pt-5">
+      <SEO title="Your Library — KanaKö" description="All your saved playlists, recently played songs, and personal collection in one place." path="/library" />
       {/* Library tabs like reference */}
       <div className="flex gap-5 mb-6 border-b border-border/50 pb-1">
         {tabs.map(tab => (

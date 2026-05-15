@@ -1,0 +1,24 @@
+# KanaKö
+
+> KanaKö by TRMS — free music streaming with synced lyrics, listen-together rooms, and friend activity. No ads, no limits.
+
+KanaKö is a web music player that lets people stream songs, follow friends, and host real-time listening rooms. It pulls audio from JioSaavn and metadata from Spotify and YouTube Music.
+
+## Pages
+
+- [Home](/): Personalized greeting, featured playlists, and quick recommendations.
+- [Search](/search): Search songs, artists, and playlists across providers.
+- [Trending](/trending): Today's most-played tracks.
+- [Radio](/radio): Genre and mood-based radio stations.
+- [Library](/library): Saved playlists and recently played.
+- [Liked Songs](/liked): Tracks the signed-in user has hearted.
+- [Together](/together): Public listening rooms and create-your-own room lobby.
+- [Friends](/friends): Friend list, activity feed, and direct messages.
+- [Profile](/profile): The signed-in user's profile.
+- [Settings](/settings): Playback quality, notifications, quiet hours, sleep timer.
+
+## Optional
+
+- [Playlist pages](/playlist/:id): Individual playlist details with track list.
+- [Artist pages](/artist/:id): Artist top tracks and information.
+- [Room pages](/room/:id): Synchronized live listening room (auth required).

@@ -1,4 +1,5 @@
 import { useLikedStore } from '@/store/playerStore';
+import SEO from '@/components/SEO';
 import { usePlayerStore } from '@/store/playerStore';
 import SongCard from '@/components/SongCard';
 import { Heart, Play, Shuffle } from 'lucide-react';
@@ -25,6 +26,7 @@ export default function LikedSongsPage() {
 
   return (
     <div className="flex-1 overflow-y-auto scrollbar-thin pb-36 md:pb-28">
+      <SEO title="Liked Songs — KanaKö" description="Your collection of hearted tracks. Play, shuffle, and rediscover the music you love." path="/liked" />
       {/* Hero */}
       <div className="relative px-4 md:px-8 pt-6 pb-6">
         <div className="absolute inset-0 h-[250px] bg-gradient-to-b from-accent/20 to-transparent" />

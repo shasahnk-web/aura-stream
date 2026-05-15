@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import SEO from '@/components/SEO';
 import { useQuery } from '@tanstack/react-query';
 import { searchSongs } from '@/services/musicApi';
 import SongCard from '@/components/SongCard';
@@ -38,6 +39,7 @@ export default function SearchPage() {
 
   return (
     <div className="flex-1 overflow-y-auto scrollbar-thin pb-36 md:pb-28 px-4 md:px-6 pt-5">
+      <SEO title="Search Music — KanaKö" description="Search millions of songs, artists, and playlists across multiple sources. Stream instantly with no ads." path="/search" />
       {/* Search bar - glass container like reference */}
       <div className="glass rounded-2xl p-5 mb-6">
         <div className="flex items-center bg-white/10 rounded-full px-5 py-3 transition-all focus-within:bg-white/15">

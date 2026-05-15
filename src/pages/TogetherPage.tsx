@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import SEO from '@/components/SEO';
 import { useNavigate } from 'react-router-dom';
 import { Headphones, Zap, Users, ArrowRight, LogIn, LogOut, Loader2 } from 'lucide-react';
 import { motion } from 'framer-motion';
@@ -106,6 +107,7 @@ export default function TogetherPage() {
   if (currentRoom) {
     return (
       <div className="flex-1 overflow-y-auto scrollbar-thin pb-36 md:pb-28 px-4 md:px-6 pt-8">
+      <SEO title="Listen Together — KanaKö Rooms" description="Create or join real-time listening rooms. Share music live with friends, no ads, no limits." path="/together" />
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
