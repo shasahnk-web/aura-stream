@@ -56,7 +56,51 @@ export default function HomePage() {
 
   return (
     <div className="flex-1 overflow-y-auto scrollbar-thin pb-36 md:pb-28 px-4 md:px-6 pt-5">
-      <SEO title="KanaKö — Free Music Streaming, No Ads" description="Stream and download unlimited free music. Discover trending songs, build playlists, and listen together with friends." path="/" />
+      <SEO
+        title="KanaKö — Free Music Streaming, No Ads"
+        description="Stream and download unlimited free music. Discover trending songs, build playlists, and listen together with friends — always free, no ads, no paywalls."
+        path="/"
+        image={loadedPlaylists[0]?.query.data?.image}
+        jsonLd={[
+          {
+            '@context': 'https://schema.org',
+            '@type': 'WebSite',
+            name: 'KanaKö',
+            url: 'https://aura-melody-hub.lovable.app/',
+            potentialAction: {
+              '@type': 'SearchAction',
+              target: 'https://aura-melody-hub.lovable.app/search?q={query}',
+              'query-input': 'required name=query',
+            },
+          },
+          ...(loadedPlaylists.length > 0 ? [{
+            '@context': 'https://schema.org',
+            '@type': 'ItemList',
+            name: 'Featured Playlists on KanaKö',
+            itemListElement: loadedPlaylists.slice(0, 8).map((p, idx) => ({
+              '@type': 'ListItem',
+              position: idx + 1,
+              url: `https://aura-melody-hub.lovable.app/playlist/${p.id}`,
+              name: p.query.data!.name,
+              image: p.query.data!.image,
+            })),
+          }] : []),
+          ...(trendingSongs.length > 0 ? [{
+            '@context': 'https://schema.org',
+            '@type': 'ItemList',
+            name: 'Trending Tracks',
+            itemListElement: trendingSongs.slice(0, 10).map((s, idx) => ({
+              '@type': 'ListItem',
+              position: idx + 1,
+              item: {
+                '@type': 'MusicRecording',
+                name: s.name,
+                byArtist: { '@type': 'MusicGroup', name: s.artist },
+              },
+            })),
+          }] : []),
+        ]}
+      />
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
