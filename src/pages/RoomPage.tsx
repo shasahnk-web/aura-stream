@@ -303,7 +303,7 @@ export default function RoomPage() {
           eventAttendanceMode: 'https://schema.org/OnlineEventAttendanceMode',
           location: {
             '@type': 'VirtualLocation',
-            url: `https://aura-melody-hub.lovable.app/room/${currentRoom.id}`,
+            url: `https://aura-stream-henna.vercel.app/room/${currentRoom.id}`,
           },
           description: `Live listening room on KanaKö with ${members.length} listeners.`,
           ...(currentRoom.current_song && {

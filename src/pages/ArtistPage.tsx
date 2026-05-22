@@ -88,7 +88,7 @@ export default function ArtistPage() {
           name: artist.name,
           image: artistImage,
           genre: artist.genres || [],
-          url: `https://aura-melody-hub.lovable.app/artist/${id}`,
+          url: `https://aura-stream-henna.vercel.app/artist/${id}`,
         }}
       />
       {/* Hero Banner */}
