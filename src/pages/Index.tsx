@@ -66,10 +66,10 @@ export default function HomePage() {
             '@context': 'https://schema.org',
             '@type': 'WebSite',
             name: 'KanaKö',
-            url: 'https://aura-melody-hub.lovable.app/',
+            url: 'https://aura-stream-henna.vercel.app/',
             potentialAction: {
               '@type': 'SearchAction',
-              target: 'https://aura-melody-hub.lovable.app/search?q={query}',
+              target: 'https://aura-stream-henna.vercel.app/search?q={query}',
               'query-input': 'required name=query',
             },
           },
@@ -80,7 +80,7 @@ export default function HomePage() {
             itemListElement: loadedPlaylists.slice(0, 8).map((p, idx) => ({
               '@type': 'ListItem',
               position: idx + 1,
-              url: `https://aura-melody-hub.lovable.app/playlist/${p.id}`,
+              url: `https://aura-stream-henna.vercel.app/playlist/${p.id}`,
               name: p.query.data!.name,
               image: p.query.data!.image,
             })),

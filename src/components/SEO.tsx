@@ -1,6 +1,6 @@
 import { Helmet } from 'react-helmet-async';
 
-const SITE = 'https://aura-melody-hub.lovable.app';
+const SITE = 'https://aura-stream-henna.vercel.app';
 
 interface SEOProps {
   title: string;
