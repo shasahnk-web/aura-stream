@@ -9,6 +9,7 @@ import { useRoomStore, RoomMessage, SongRequest, JoinRequest } from '@/store/roo
 import { useAuthStore } from '@/store/authStore';
 import { usePlayerStore, Song } from '@/store/playerStore';
 import { searchSongs } from '@/services/musicApi';
+import SEO from '@/components/SEO';
 import { toast } from 'sonner';
 
 const REACTION_EMOJIS = ['🔥', '👏', '💥', '🎉'];
@@ -284,6 +285,36 @@ export default function RoomPage() {
     <div className={`flex-1 flex flex-col overflow-hidden pb-[160px] md:pb-28 ${partyMode ? 'party-mode-bg' : ''}`}
       style={partyMode ? { animation: 'party-glow 4s ease-in-out infinite' } : undefined}
     >
+      <SEO
+        title={currentRoom ? `${currentRoom.room_name} — Listen Together on KanaKö` : 'Listening Room — KanaKö'}
+        description={
+          currentRoom
+            ? `Join "${currentRoom.room_name}" — listen in sync with ${members.length} ${members.length === 1 ? 'listener' : 'listeners'} on KanaKö. Free synchronized music rooms.`
+            : 'Join synchronized listening rooms on KanaKö. Chat, react, and share music in real time — free, no ads.'
+        }
+        path={`/room/${roomId || ''}`}
+        image={currentRoom?.current_song?.image}
+        type="website"
+        jsonLd={currentRoom ? {
+          '@context': 'https://schema.org',
+          '@type': 'Event',
+          name: currentRoom.room_name,
+          eventStatus: 'https://schema.org/EventScheduled',
+          eventAttendanceMode: 'https://schema.org/OnlineEventAttendanceMode',
+          location: {
+            '@type': 'VirtualLocation',
+            url: `https://aura-melody-hub.lovable.app/room/${currentRoom.id}`,
+          },
+          description: `Live listening room on KanaKö with ${members.length} listeners.`,
+          ...(currentRoom.current_song && {
+            workPerformed: {
+              '@type': 'MusicRecording',
+              name: currentRoom.current_song.name,
+              byArtist: { '@type': 'MusicGroup', name: currentRoom.current_song.artist },
+            },
+          }),
+        } : undefined}
+      />
       {/* Floating reactions */}
       <div className="fixed inset-0 pointer-events-none z-[100]">
         <AnimatePresence>
