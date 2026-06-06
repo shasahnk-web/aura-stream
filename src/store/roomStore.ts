@@ -261,23 +261,21 @@ export const useRoomStore = create<RoomState>((set, get) => ({
     pendingChannel.subscribe();
   },
   
-  approveJoin: async (requestId, userId, userName, roomId) => {
+  approveJoin: async (requestId, userId, _userName, roomId) => {
     const { isHost } = get();
     if (!isHost) return;
-    
-    await supabase.from('join_requests').update({ status: 'approved' }).eq('id', requestId);
-    
-    // Add to room members
-    await supabase.from('room_members').upsert({
-      room_id: roomId,
-      user_id: userId,
-      user_name: userName,
-    }, { onConflict: 'room_id,user_id' });
-    
+
+    // Atomic host-only approval: updates status AND inserts room member via SECURITY DEFINER RPC.
+    const { error } = await supabase.rpc('approve_join_request', { p_request_id: requestId });
+    if (error) {
+      console.error('approve_join_request failed:', error);
+      return;
+    }
+
     // Broadcast approval
     const { channel } = get();
     channel?.send({ type: 'broadcast', event: 'join_approved', payload: { userId } });
-    
+
     // Also broadcast on the pending channel
     const pendingCh = supabase.channel(`pending-join:${roomId}:${userId}`);
     pendingCh.subscribe(async (status) => {
@@ -286,7 +284,7 @@ export const useRoomStore = create<RoomState>((set, get) => ({
         setTimeout(() => supabase.removeChannel(pendingCh), 1000);
       }
     });
-    
+
     // Remove from local join requests
     set({ joinRequests: get().joinRequests.filter(r => r.id !== requestId) });
   },

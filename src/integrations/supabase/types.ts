@@ -321,8 +321,20 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      approve_join_request: {
+        Args: { p_request_id: string }
+        Returns: undefined
+      }
       find_user_by_email: {
         Args: { search_email: string }
+        Returns: {
+          avatar_url: string
+          id: string
+          name: string
+        }[]
+      }
+      get_friend_profiles: {
+        Args: never
         Returns: {
           avatar_url: string
           id: string
@@ -337,6 +349,7 @@ export type Database = {
           name: string
         }[]
       }
+      mark_messages_read: { Args: { p_sender_id: string }; Returns: undefined }
       realtime_can_access: { Args: { topic: string }; Returns: boolean }
       realtime_topic_room_id: { Args: { topic: string }; Returns: string }
     }

@@ -1,4 +1,5 @@
 import { Song, Playlist } from '@/store/playerStore';
+import { supabase } from '@/integrations/supabase/client';
 
 const FUNCTION_URL = `https://${import.meta.env.VITE_SUPABASE_PROJECT_ID}.supabase.co/functions/v1/spotify`;
 const ANON_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
@@ -7,15 +8,18 @@ async function edgeFetch(params: Record<string, string>) {
   const url = new URL(FUNCTION_URL);
   Object.entries(params).forEach(([k, v]) => url.searchParams.set(k, v));
 
+  const { data: { session } } = await supabase.auth.getSession();
+  if (!session) return { data: { songs: [], results: [], fallback: true } };
+
   const res = await fetch(url.toString(), {
     headers: {
       'apikey': ANON_KEY,
+      'Authorization': `Bearer ${session.access_token}`,
       'Content-Type': 'application/json',
     },
   });
 
   if (!res.ok) {
-    // Don't throw — return fallback shape so UI doesn't blank out
     return { data: { songs: [], results: [], fallback: true } };
   }
 
