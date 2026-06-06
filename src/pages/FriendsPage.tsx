@@ -246,13 +246,8 @@ export default function FriendsPage() {
     
     setMessages((data || []) as DirectMessage[]);
 
-    // Mark unread messages as read
-    await supabase
-      .from('direct_messages')
-      .update({ read: true })
-      .eq('sender_id', friend.id)
-      .eq('receiver_id', user.id)
-      .eq('read', false);
+    // Mark unread messages as read via SECURITY DEFINER RPC (prevents tampering with message content)
+    await supabase.rpc('mark_messages_read', { p_sender_id: friend.id });
   };
 
   const sendDM = async () => {
