@@ -116,6 +116,9 @@ Deno.serve(async (req) => {
     return new Response('ok', { headers: corsHeaders });
   }
 
+  const unauth = await requireUser(req);
+  if (unauth) return unauth;
+
   try {
     const url = new URL(req.url);
     const action = url.searchParams.get('action');
