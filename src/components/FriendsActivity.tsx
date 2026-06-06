@@ -34,13 +34,13 @@ export default function FriendsActivity() {
         f.requester_id === user.id ? f.addressee_id : f.requester_id
       );
       
-      // Get activities and profiles
+      // Get activities + friend profiles (profiles read via SECURITY DEFINER RPC — no email exposure)
       const [activityRes, profileRes] = await Promise.all([
         supabase.from('user_activity').select('*').in('user_id', friendIds),
-        supabase.from('profiles').select('id, name, avatar_url').in('id', friendIds),
+        supabase.rpc('get_friend_profiles'),
       ]);
-      
-      const profileMap = new Map(profileRes.data?.map(p => [p.id, p]) || []);
+
+      const profileMap = new Map((profileRes.data || []).map((p: { id: string; name: string; avatar_url: string | null }) => [p.id, p]));
       
       const activityList: Activity[] = (activityRes.data || []).map(a => ({
         user_id: a.user_id,
