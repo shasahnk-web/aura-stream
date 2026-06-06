@@ -1,4 +1,8 @@
 project_id = "uwvsyladvvvjqlgnqppq"
 
+# JWT is validated in-code via supabase.auth.getClaims() inside each function.
 [functions.spotify]
+verify_jwt = false
+
+[functions.ytmusic]
 verify_jwt = false
