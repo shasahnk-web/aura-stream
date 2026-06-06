@@ -6,9 +6,13 @@ async function spotifyCall(params: Record<string, string>) {
   const url = new URL(FUNCTION_URL);
   Object.entries(params).forEach(([k, v]) => url.searchParams.set(k, v));
 
+  const { data: { session } } = await supabase.auth.getSession();
+  if (!session) throw new Error('Sign in required');
+
   const res = await fetch(url.toString(), {
     headers: {
       'apikey': import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
+      'Authorization': `Bearer ${session.access_token}`,
       'Content-Type': 'application/json',
     },
   });
