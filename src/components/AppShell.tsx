@@ -1,5 +1,5 @@
 import { Suspense, lazy } from 'react';
-import { BrowserRouter, Navigate, Route, Routes, useLocation } from 'react-router-dom';
+import { BrowserRouter, Route, Routes } from 'react-router-dom';
 import Header from '@/components/Header';
 import Sidebar from '@/components/Sidebar';
 import MobileNav from '@/components/MobileNav';
@@ -32,8 +32,6 @@ function ShellLoader() {
 }
 
 function ProtectedLayout() {
-  const location = useLocation();
-
   return (
     <>
       <DynamicBackground />
