@@ -9,9 +9,10 @@ interface SEOProps {
   image?: string;
   type?: 'website' | 'article' | 'music.playlist' | 'music.musician' | 'profile';
   jsonLd?: Record<string, unknown> | Record<string, unknown>[];
+  noindex?: boolean;
 }
 
-export default function SEO({ title, description, path, image, type = 'website', jsonLd }: SEOProps) {
+export default function SEO({ title, description, path, image, type = 'website', jsonLd, noindex = false }: SEOProps) {
   const url = `${SITE}${path}`;
   const fullTitle = title.length > 60 ? title.slice(0, 57) + '...' : title;
   const desc = description.length > 160 ? description.slice(0, 157) + '...' : description;
@@ -22,6 +23,7 @@ export default function SEO({ title, description, path, image, type = 'website',
       <title>{fullTitle}</title>
       <meta name="description" content={desc} />
       <link rel="canonical" href={url} />
+      {noindex && <meta name="robots" content="noindex,nofollow" />}
       <meta property="og:title" content={fullTitle} />
       <meta property="og:description" content={desc} />
       <meta property="og:url" content={url} />

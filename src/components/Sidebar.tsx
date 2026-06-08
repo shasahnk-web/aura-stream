@@ -33,7 +33,6 @@ export default function Sidebar() {
         <img src={kanakoLogo} alt="KanaKö" className="w-14 h-14 rounded-xl shadow-lg" />
         <div>
           <h1 className="text-xl font-bold gradient-text tracking-wide">KanaKö</h1>
-          <p className="text-[10px] text-muted-foreground">by TRMS</p>
         </div>
       </div>
 
