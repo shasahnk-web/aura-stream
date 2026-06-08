@@ -1,4 +1,5 @@
 import { supabase } from '@/integrations/supabase/client';
+import { getCachedPromise } from '@/lib/requestCache';
 
 const FUNCTION_URL = `https://${import.meta.env.VITE_SUPABASE_PROJECT_ID}.supabase.co/functions/v1/spotify`;
 
@@ -6,23 +7,25 @@ async function spotifyCall(params: Record<string, string>) {
   const url = new URL(FUNCTION_URL);
   Object.entries(params).forEach(([k, v]) => url.searchParams.set(k, v));
 
-  const { data: { session } } = await supabase.auth.getSession();
-  if (!session) throw new Error('Sign in required');
+  return getCachedPromise(`spotify:${url.toString()}`, async () => {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) throw new Error('Sign in required');
 
-  const res = await fetch(url.toString(), {
-    headers: {
-      'apikey': import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
-      'Authorization': `Bearer ${session.access_token}`,
-      'Content-Type': 'application/json',
-    },
-  });
+    const res = await fetch(url.toString(), {
+      headers: {
+        apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
+        Authorization: `Bearer ${session.access_token}`,
+        'Content-Type': 'application/json',
+      },
+    });
 
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({ error: 'Unknown error' }));
-    throw new Error(err.error || `Spotify API error ${res.status}`);
-  }
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ error: 'Unknown error' }));
+      throw new Error(err.error || `Spotify API error ${res.status}`);
+    }
 
-  return res.json();
+    return res.json();
+  }, 60_000);
 }
 
 export interface SpotifyTrack {

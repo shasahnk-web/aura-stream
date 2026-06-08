@@ -1,5 +1,6 @@
-import { Song, Playlist } from '@/store/playerStore';
+import { Song } from '@/store/playerStore';
 import { supabase } from '@/integrations/supabase/client';
+import { getCachedPromise } from '@/lib/requestCache';
 
 const FUNCTION_URL = `https://${import.meta.env.VITE_SUPABASE_PROJECT_ID}.supabase.co/functions/v1/spotify`;
 const ANON_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
@@ -8,22 +9,25 @@ async function edgeFetch(params: Record<string, string>) {
   const url = new URL(FUNCTION_URL);
   Object.entries(params).forEach(([k, v]) => url.searchParams.set(k, v));
 
-  const { data: { session } } = await supabase.auth.getSession();
-  if (!session) return { data: { songs: [], results: [], fallback: true } };
+  const cacheKey = `edge:${url.toString()}`;
+  return getCachedPromise(cacheKey, async () => {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) return { data: { songs: [], results: [], fallback: true } };
 
-  const res = await fetch(url.toString(), {
-    headers: {
-      'apikey': ANON_KEY,
-      'Authorization': `Bearer ${session.access_token}`,
-      'Content-Type': 'application/json',
-    },
-  });
+    const res = await fetch(url.toString(), {
+      headers: {
+        apikey: ANON_KEY,
+        Authorization: `Bearer ${session.access_token}`,
+        'Content-Type': 'application/json',
+      },
+    });
 
-  if (!res.ok) {
-    return { data: { songs: [], results: [], fallback: true } };
-  }
+    if (!res.ok) {
+      return { data: { songs: [], results: [], fallback: true } };
+    }
 
-  return res.json();
+    return res.json();
+  }, 60_000);
 }
 
 function decodeHtml(html: string): string {
@@ -42,17 +46,10 @@ function extractImage(img: any): string {
 }
 
 function extractArtist(s: any): string {
-  if (s.artists?.primary) {
-    return s.artists.primary.map((a: any) => a.name).join(', ');
-  }
+  if (s.artists?.primary) return s.artists.primary.map((a: any) => a.name).join(', ');
   if (s.primaryArtists) return decodeHtml(s.primaryArtists);
-  if (s.subtitle) {
-    const parts = s.subtitle.split(' - ');
-    if (parts.length > 0) return decodeHtml(parts[0]);
-  }
-  if (s.more_info?.artistMap?.primary_artists) {
-    return s.more_info.artistMap.primary_artists.map((a: any) => a.name).join(', ');
-  }
+  if (s.subtitle) return decodeHtml(s.subtitle.split(' - ')[0] || s.subtitle);
+  if (s.more_info?.artistMap?.primary_artists) return s.more_info.artistMap.primary_artists.map((a: any) => a.name).join(', ');
   return 'Unknown Artist';
 }
 
@@ -60,9 +57,9 @@ function extractUrl(s: any): string {
   if (s.downloadUrl) {
     if (Array.isArray(s.downloadUrl)) {
       return s.downloadUrl[4]?.url || s.downloadUrl[3]?.url || s.downloadUrl[2]?.url ||
-             s.downloadUrl[4]?.link || s.downloadUrl[3]?.link || s.downloadUrl[2]?.link ||
-             s.downloadUrl[1]?.url || s.downloadUrl[0]?.url ||
-             s.downloadUrl[1]?.link || s.downloadUrl[0]?.link || '';
+        s.downloadUrl[4]?.link || s.downloadUrl[3]?.link || s.downloadUrl[2]?.link ||
+        s.downloadUrl[1]?.url || s.downloadUrl[0]?.url ||
+        s.downloadUrl[1]?.link || s.downloadUrl[0]?.link || '';
     }
     if (typeof s.downloadUrl === 'string') return s.downloadUrl;
   }
@@ -72,7 +69,7 @@ function extractUrl(s: any): string {
 
 function mapSong(s: any): Song {
   return {
-    id: s.id || String(Math.random()),
+    id: s.id || crypto.randomUUID(),
     name: decodeHtml(s.name || s.song || s.title || 'Unknown'),
     artist: extractArtist(s),
     album: decodeHtml(s.album?.name || s.album || s.more_info?.album || ''),
@@ -89,11 +86,7 @@ export async function fetchPlaylist(listId: string): Promise<{ name: string; ima
     if (info?.fallback) return { name: 'Playlist', image: '', songs: [] };
     const songList = info.songs || info.list || [];
     const songs = Array.isArray(songList) ? songList.map(mapSong).filter((s: Song) => s.url) : [];
-    return {
-      name: decodeHtml(info.name || info.title || 'Playlist'),
-      image: extractImage(info.image),
-      songs,
-    };
+    return { name: decodeHtml(info.name || info.title || 'Playlist'), image: extractImage(info.image), songs };
   } catch {
     return { name: 'Playlist', image: '', songs: [] };
   }
@@ -119,7 +112,6 @@ export async function fetchHomepage(): Promise<any> {
   }
 }
 
-// Featured playlist IDs from JioSaavn (verified working)
 export const FEATURED_PLAYLISTS = [
   { id: '1134543272', name: 'India Superhits Top 50' },
   { id: '110858205', name: 'Trending Today' },
