@@ -33,3 +33,12 @@ coverage
 .vscode
 .idea
 *.log
+node_modules
+dist
+build
+.env
+.next
+coverage
+.vscode
+.idea
+*.log
