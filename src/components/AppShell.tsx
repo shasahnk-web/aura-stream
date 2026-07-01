@@ -68,19 +68,9 @@ function ProtectedLayout() {
 }
 
 export default function AppShell() {
-  const { user, loading } = useAuthStore();
-
-  if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-background text-foreground">
-        <div className="glass rounded-[28px] px-6 py-4 text-sm text-muted-foreground">Checking session…</div>
-      </div>
-    );
-  }
-
   return (
     <BrowserRouter>
-      {user ? <ProtectedLayout /> : <Routes><Route path="*" element={<LoginPage />} /></Routes>}
+      <ProtectedLayout />
     </BrowserRouter>
   );
 }
