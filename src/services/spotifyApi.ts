@@ -9,12 +9,12 @@ async function spotifyCall(params: Record<string, string>) {
 
   return getCachedPromise(`spotify:${url.toString()}`, async () => {
     const { data: { session } } = await supabase.auth.getSession();
-    if (!session) throw new Error('Sign in required');
+    const token = session?.access_token || import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
 
     const res = await fetch(url.toString(), {
       headers: {
         apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
-        Authorization: `Bearer ${session.access_token}`,
+        Authorization: `Bearer ${token}`,
         'Content-Type': 'application/json',
       },
     });

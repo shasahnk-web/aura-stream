@@ -11,12 +11,12 @@ async function ytFetch(params: Record<string, string>) {
 
   return getCachedPromise(`ytmusic:${url.toString()}`, async () => {
     const { data: { session } } = await supabase.auth.getSession();
-    if (!session) throw new Error('Sign in required');
+    const token = session?.access_token || ANON_KEY;
 
     const res = await fetch(url.toString(), {
       headers: {
         apikey: ANON_KEY,
-        Authorization: `Bearer ${session.access_token}`,
+        Authorization: `Bearer ${token}`,
         'Content-Type': 'application/json',
       },
     });
