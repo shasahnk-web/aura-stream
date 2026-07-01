@@ -12,12 +12,12 @@ async function edgeFetch(params: Record<string, string>) {
   const cacheKey = `edge:${url.toString()}`;
   return getCachedPromise(cacheKey, async () => {
     const { data: { session } } = await supabase.auth.getSession();
-    if (!session) return { data: { songs: [], results: [], fallback: true } };
+    const token = session?.access_token || ANON_KEY;
 
     const res = await fetch(url.toString(), {
       headers: {
         apikey: ANON_KEY,
-        Authorization: `Bearer ${session.access_token}`,
+        Authorization: `Bearer ${token}`,
         'Content-Type': 'application/json',
       },
     });
