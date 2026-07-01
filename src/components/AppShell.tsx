@@ -4,8 +4,6 @@ import Header from '@/components/Header';
 import Sidebar from '@/components/Sidebar';
 import MobileNav from '@/components/MobileNav';
 import DynamicBackground from '@/components/DynamicBackground';
-import { useAuthStore } from '@/store/authStore';
-import LoginPage from '@/pages/LoginPage';
 
 const Index = lazy(() => import('@/pages/Index'));
 const SearchPage = lazy(() => import('@/pages/SearchPage'));
