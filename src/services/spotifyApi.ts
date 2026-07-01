@@ -14,7 +14,7 @@ async function spotifyCall(params: Record<string, string>) {
     const res = await fetch(url.toString(), {
       headers: {
         apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
-        Authorization: `Bearer ${session.access_token}`,
+        Authorization: `Bearer ${token}`,
         'Content-Type': 'application/json',
       },
     });
