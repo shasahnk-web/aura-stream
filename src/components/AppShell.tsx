@@ -4,8 +4,6 @@ import Header from '@/components/Header';
 import Sidebar from '@/components/Sidebar';
 import MobileNav from '@/components/MobileNav';
 import DynamicBackground from '@/components/DynamicBackground';
-import { useAuthStore } from '@/store/authStore';
-import LoginPage from '@/pages/LoginPage';
 
 const Index = lazy(() => import('@/pages/Index'));
 const SearchPage = lazy(() => import('@/pages/SearchPage'));
@@ -70,19 +68,9 @@ function ProtectedLayout() {
 }
 
 export default function AppShell() {
-  const { user, loading } = useAuthStore();
-
-  if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-background text-foreground">
-        <div className="glass rounded-[28px] px-6 py-4 text-sm text-muted-foreground">Checking session…</div>
-      </div>
-    );
-  }
-
   return (
     <BrowserRouter>
-      {user ? <ProtectedLayout /> : <Routes><Route path="*" element={<LoginPage />} /></Routes>}
+      <ProtectedLayout />
     </BrowserRouter>
   );
 }

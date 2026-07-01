@@ -175,8 +175,7 @@ async function jioSearch(q: string, limit: string) {
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response(null, { headers: corsHeaders });
 
-  const unauth = await requireUser(req);
-  if (unauth) return unauth;
+
 
   try {
     const url = new URL(req.url);
