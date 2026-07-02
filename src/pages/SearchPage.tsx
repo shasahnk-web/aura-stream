@@ -5,6 +5,7 @@ import { searchSongs } from '@/services/musicApi';
 import SongCard from '@/components/SongCard';
 import PlaylistCardRef from '@/components/PlaylistCardRef';
 import { Search as SearchIcon } from 'lucide-react';
+import ApiErrorState from '@/components/ApiErrorState';
 import { motion } from 'framer-motion';
 
 const CATEGORIES = ['All', 'Songs', 'Artists', 'Playlists', 'Albums', 'Podcasts', 'Genres'];
