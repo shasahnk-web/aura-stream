@@ -37,10 +37,15 @@ export default function HomePage() {
     query: useQuery({
       queryKey: ['playlist-meta', p.id],
       queryFn: () => fetchPlaylist(p.id),
+      retry: 2,
+      staleTime: 5 * 60 * 1000,
     }),
   }));
 
   const loadedPlaylists = playlistQueries.filter(p => p.query.data);
+  const allFailed = playlistQueries.every(p => p.query.isError);
+  const anyFetching = playlistQueries.some(p => p.query.isFetching);
+  const retryAll = () => playlistQueries.forEach(p => p.query.refetch());
   const trendingSongs = loadedPlaylists[0]?.query.data?.songs?.slice(0, 8) || [];
 
   const greeting = () => {
