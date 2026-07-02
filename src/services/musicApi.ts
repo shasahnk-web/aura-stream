@@ -5,28 +5,68 @@ import { getCachedPromise } from '@/lib/requestCache';
 const FUNCTION_URL = `https://${import.meta.env.VITE_SUPABASE_PROJECT_ID}.supabase.co/functions/v1/spotify`;
 const ANON_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
 
+const LS_PREFIX = 'kanako-cache:';
+const LS_TTL_MS = 24 * 60 * 60 * 1000; // 24h stale-while-error fallback
+
+function readLS(key: string): any | null {
+  try {
+    const raw = localStorage.getItem(LS_PREFIX + key);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    if (!parsed || typeof parsed.t !== 'number') return null;
+    if (Date.now() - parsed.t > LS_TTL_MS) return null;
+    return parsed.d;
+  } catch { return null; }
+}
+
+function writeLS(key: string, data: any) {
+  try { localStorage.setItem(LS_PREFIX + key, JSON.stringify({ t: Date.now(), d: data })); } catch {}
+}
+
+async function fetchWithRetry(url: string, init: RequestInit, retries = 3): Promise<Response> {
+  let lastErr: any;
+  for (let attempt = 0; attempt < retries; attempt++) {
+    try {
+      const ctrl = new AbortController();
+      const timer = setTimeout(() => ctrl.abort(), 15000);
+      const res = await fetch(url, { ...init, signal: ctrl.signal });
+      clearTimeout(timer);
+      if (res.ok) return res;
+      // retry on 5xx / 429
+      if (res.status < 500 && res.status !== 429) return res;
+      lastErr = new Error(`HTTP ${res.status}`);
+    } catch (e) { lastErr = e; }
+    await new Promise(r => setTimeout(r, 400 * Math.pow(2, attempt) + Math.random() * 200));
+  }
+  throw lastErr ?? new Error('fetch failed');
+}
+
 async function edgeFetch(params: Record<string, string>) {
   const url = new URL(FUNCTION_URL);
   Object.entries(params).forEach(([k, v]) => url.searchParams.set(k, v));
+  const key = url.toString();
+  const cacheKey = `edge:${key}`;
 
-  const cacheKey = `edge:${url.toString()}`;
   return getCachedPromise(cacheKey, async () => {
-    const { data: { session } } = await supabase.auth.getSession();
-    const token = session?.access_token || ANON_KEY;
-
-    const res = await fetch(url.toString(), {
-      headers: {
-        apikey: ANON_KEY,
-        Authorization: `Bearer ${token}`,
-        'Content-Type': 'application/json',
-      },
-    });
-
-    if (!res.ok) {
-      return { data: { songs: [], results: [], fallback: true } };
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const token = session?.access_token || ANON_KEY;
+      const res = await fetchWithRetry(url.toString(), {
+        headers: {
+          apikey: ANON_KEY,
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+      });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const json = await res.json();
+      writeLS(key, json);
+      return json;
+    } catch (err) {
+      const cached = readLS(key);
+      if (cached) return cached;
+      throw err;
     }
-
-    return res.json();
   }, 60_000);
 }
 
@@ -80,36 +120,25 @@ function mapSong(s: any): Song {
 }
 
 export async function fetchPlaylist(listId: string): Promise<{ name: string; image: string; songs: Song[] }> {
-  try {
-    const data = await edgeFetch({ action: 'jiosaavn-playlist', id: listId });
-    const info = data.data || data;
-    if (info?.fallback) return { name: 'Playlist', image: '', songs: [] };
-    const songList = info.songs || info.list || [];
-    const songs = Array.isArray(songList) ? songList.map(mapSong).filter((s: Song) => s.url) : [];
-    return { name: decodeHtml(info.name || info.title || 'Playlist'), image: extractImage(info.image), songs };
-  } catch {
-    return { name: 'Playlist', image: '', songs: [] };
-  }
+  const data = await edgeFetch({ action: 'jiosaavn-playlist', id: listId });
+  const info = data.data || data;
+  if (info?.fallback) throw new Error('Music service temporarily unavailable');
+  const songList = info.songs || info.list || [];
+  const songs = Array.isArray(songList) ? songList.map(mapSong).filter((s: Song) => s.url) : [];
+  if (songs.length === 0) throw new Error('No playable tracks returned');
+  return { name: decodeHtml(info.name || info.title || 'Playlist'), image: extractImage(info.image), songs };
 }
 
 export async function searchSongs(query: string): Promise<Song[]> {
-  try {
-    const data = await edgeFetch({ action: 'jiosaavn-search', q: query, limit: '20' });
-    if (data?.data?.fallback) return [];
-    const results = data.data?.results || data.results || [];
-    return results.map(mapSong).filter((s: Song) => s.url);
-  } catch {
-    return [];
-  }
+  const data = await edgeFetch({ action: 'jiosaavn-search', q: query, limit: '20' });
+  if (data?.data?.fallback) throw new Error('Search unavailable');
+  const results = data.data?.results || data.results || [];
+  return results.map(mapSong).filter((s: Song) => s.url);
 }
 
 export async function fetchHomepage(): Promise<any> {
-  try {
-    const data = await edgeFetch({ action: 'jiosaavn-playlist', id: '1134543272' });
-    return data.data || data;
-  } catch {
-    return {};
-  }
+  const data = await edgeFetch({ action: 'jiosaavn-playlist', id: '1134543272' });
+  return data.data || data;
 }
 
 export const FEATURED_PLAYLISTS = [

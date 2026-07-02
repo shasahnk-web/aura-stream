@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import SEO from '@/components/SEO';
 import { useQuery } from '@tanstack/react-query';
 import { fetchPlaylist, FEATURED_PLAYLISTS } from '@/services/musicApi';
+import ApiErrorState from '@/components/ApiErrorState';
 import PlaylistCardRef from '@/components/PlaylistCardRef';
 import SongCard from '@/components/SongCard';
 import SpotifyRecommendations from '@/components/SpotifyRecommendations';
@@ -36,10 +37,15 @@ export default function HomePage() {
     query: useQuery({
       queryKey: ['playlist-meta', p.id],
       queryFn: () => fetchPlaylist(p.id),
+      retry: 2,
+      staleTime: 5 * 60 * 1000,
     }),
   }));
 
   const loadedPlaylists = playlistQueries.filter(p => p.query.data);
+  const allFailed = playlistQueries.every(p => p.query.isError);
+  const anyFetching = playlistQueries.some(p => p.query.isFetching);
+  const retryAll = () => playlistQueries.forEach(p => p.query.refetch());
   const trendingSongs = loadedPlaylists[0]?.query.data?.songs?.slice(0, 8) || [];
 
   const greeting = () => {
@@ -196,8 +202,11 @@ export default function HomePage() {
         </section>
       )}
 
-      {/* Loading skeleton */}
-      {loadedPlaylists.length === 0 && (
+      {/* Error / Loading state */}
+      {loadedPlaylists.length === 0 && allFailed && (
+        <ApiErrorState onRetry={retryAll} retrying={anyFetching} />
+      )}
+      {loadedPlaylists.length === 0 && !allFailed && (
         <div className="horizontal-scroll">
           {Array.from({ length: 4 }).map((_, i) => (
             <div key={i} className="min-w-[180px] h-[180px] rounded-2xl bg-secondary/30 animate-pulse shrink-0" />

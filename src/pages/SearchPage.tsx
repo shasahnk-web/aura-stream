@@ -5,6 +5,7 @@ import { searchSongs } from '@/services/musicApi';
 import SongCard from '@/components/SongCard';
 import PlaylistCardRef from '@/components/PlaylistCardRef';
 import { Search as SearchIcon } from 'lucide-react';
+import ApiErrorState from '@/components/ApiErrorState';
 import { motion } from 'framer-motion';
 
 const CATEGORIES = ['All', 'Songs', 'Artists', 'Playlists', 'Albums', 'Podcasts', 'Genres'];
@@ -25,10 +26,11 @@ export default function SearchPage() {
   const [debouncedQuery, setDebouncedQuery] = useState('');
   const [activeCategory, setActiveCategory] = useState('All');
 
-  const { data: results, isLoading } = useQuery({
+  const { data: results, isLoading, isError, isFetching, refetch } = useQuery({
     queryKey: ['search', debouncedQuery],
     queryFn: () => searchSongs(debouncedQuery),
     enabled: debouncedQuery.length > 1,
+    retry: 2,
   });
 
   const handleInput = (val: string) => {
@@ -92,6 +94,15 @@ export default function SearchPage() {
             </div>
           ))}
         </div>
+      )}
+
+      {isError && debouncedQuery.length > 1 && (
+        <ApiErrorState
+          title="Search failed"
+          message="We couldn't reach the music service. Check your connection and try again."
+          onRetry={() => refetch()}
+          retrying={isFetching}
+        />
       )}
 
       {/* Browse genres */}
