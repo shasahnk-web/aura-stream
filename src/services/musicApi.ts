@@ -120,36 +120,25 @@ function mapSong(s: any): Song {
 }
 
 export async function fetchPlaylist(listId: string): Promise<{ name: string; image: string; songs: Song[] }> {
-  try {
-    const data = await edgeFetch({ action: 'jiosaavn-playlist', id: listId });
-    const info = data.data || data;
-    if (info?.fallback) return { name: 'Playlist', image: '', songs: [] };
-    const songList = info.songs || info.list || [];
-    const songs = Array.isArray(songList) ? songList.map(mapSong).filter((s: Song) => s.url) : [];
-    return { name: decodeHtml(info.name || info.title || 'Playlist'), image: extractImage(info.image), songs };
-  } catch {
-    return { name: 'Playlist', image: '', songs: [] };
-  }
+  const data = await edgeFetch({ action: 'jiosaavn-playlist', id: listId });
+  const info = data.data || data;
+  if (info?.fallback) throw new Error('Music service temporarily unavailable');
+  const songList = info.songs || info.list || [];
+  const songs = Array.isArray(songList) ? songList.map(mapSong).filter((s: Song) => s.url) : [];
+  if (songs.length === 0) throw new Error('No playable tracks returned');
+  return { name: decodeHtml(info.name || info.title || 'Playlist'), image: extractImage(info.image), songs };
 }
 
 export async function searchSongs(query: string): Promise<Song[]> {
-  try {
-    const data = await edgeFetch({ action: 'jiosaavn-search', q: query, limit: '20' });
-    if (data?.data?.fallback) return [];
-    const results = data.data?.results || data.results || [];
-    return results.map(mapSong).filter((s: Song) => s.url);
-  } catch {
-    return [];
-  }
+  const data = await edgeFetch({ action: 'jiosaavn-search', q: query, limit: '20' });
+  if (data?.data?.fallback) throw new Error('Search unavailable');
+  const results = data.data?.results || data.results || [];
+  return results.map(mapSong).filter((s: Song) => s.url);
 }
 
 export async function fetchHomepage(): Promise<any> {
-  try {
-    const data = await edgeFetch({ action: 'jiosaavn-playlist', id: '1134543272' });
-    return data.data || data;
-  } catch {
-    return {};
-  }
+  const data = await edgeFetch({ action: 'jiosaavn-playlist', id: '1134543272' });
+  return data.data || data;
 }
 
 export const FEATURED_PLAYLISTS = [
