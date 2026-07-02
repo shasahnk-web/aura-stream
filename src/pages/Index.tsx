@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import SEO from '@/components/SEO';
 import { useQuery } from '@tanstack/react-query';
 import { fetchPlaylist, FEATURED_PLAYLISTS } from '@/services/musicApi';
+import ApiErrorState from '@/components/ApiErrorState';
 import PlaylistCardRef from '@/components/PlaylistCardRef';
 import SongCard from '@/components/SongCard';
 import SpotifyRecommendations from '@/components/SpotifyRecommendations';
