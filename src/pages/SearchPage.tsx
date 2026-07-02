@@ -25,10 +25,11 @@ export default function SearchPage() {
   const [debouncedQuery, setDebouncedQuery] = useState('');
   const [activeCategory, setActiveCategory] = useState('All');
 
-  const { data: results, isLoading } = useQuery({
+  const { data: results, isLoading, isError, isFetching, refetch } = useQuery({
     queryKey: ['search', debouncedQuery],
     queryFn: () => searchSongs(debouncedQuery),
     enabled: debouncedQuery.length > 1,
+    retry: 2,
   });
 
   const handleInput = (val: string) => {
