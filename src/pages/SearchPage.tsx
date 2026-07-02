@@ -96,6 +96,15 @@ export default function SearchPage() {
         </div>
       )}
 
+      {isError && debouncedQuery.length > 1 && (
+        <ApiErrorState
+          title="Search failed"
+          message="We couldn't reach the music service. Check your connection and try again."
+          onRetry={() => refetch()}
+          retrying={isFetching}
+        />
+      )}
+
       {/* Browse genres */}
       {!debouncedQuery && (
         <section>
