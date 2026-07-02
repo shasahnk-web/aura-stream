@@ -202,8 +202,11 @@ export default function HomePage() {
         </section>
       )}
 
-      {/* Loading skeleton */}
-      {loadedPlaylists.length === 0 && (
+      {/* Error / Loading state */}
+      {loadedPlaylists.length === 0 && allFailed && (
+        <ApiErrorState onRetry={retryAll} retrying={anyFetching} />
+      )}
+      {loadedPlaylists.length === 0 && !allFailed && (
         <div className="horizontal-scroll">
           {Array.from({ length: 4 }).map((_, i) => (
             <div key={i} className="min-w-[180px] h-[180px] rounded-2xl bg-secondary/30 animate-pulse shrink-0" />
